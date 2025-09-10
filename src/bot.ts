@@ -91,12 +91,21 @@ export class BskyBot {
         if (post.record && typeof post.record === 'object' && 'text' in post.record) {
           const text = post.record.text as string;
           
+          console.log(`Checking post: ${text.substring(0, 150)}`);
+          console.log(`Post URI: ${post.uri}`);
+          console.log(`Contains hashtag: ${text.includes(this.config.hashtag)}`);
+          console.log(`Already processed: ${this.processedPosts.has(post.uri)}`);
+          
           // Check if post contains our hashtag and hasn't been processed
           if (text.includes(this.config.hashtag) && !this.processedPosts.has(post.uri)) {
-            console.log(`Found new post with hashtag: ${text.substring(0, 100)}...`);
+            console.log(`✅ Processing new post with hashtag: ${text.substring(0, 100)}...`);
             await this.processPost(post, text);
             this.processedPosts.add(post.uri);
+          } else {
+            console.log(`❌ Skipping post (already processed or no hashtag match)`);
           }
+        } else {
+          console.log(`❌ Skipping post (no text content)`);
         }
       }
     } catch (error) {
@@ -132,11 +141,14 @@ export class BskyBot {
   }
 
   private async processPost(post: any, text: string): Promise<void> {
+    console.log(`🔍 Processing post for video URLs: ${text.substring(0, 200)}`);
     const videoInfo = URLUtils.extractVideoInfo(text);
     
     if (videoInfo) {
-      console.log(`Found ${videoInfo.platform} URL: ${videoInfo.url} (${videoInfo.type || 'video'})`);
+      console.log(`✅ Found ${videoInfo.platform} URL: ${videoInfo.url} (${videoInfo.type || 'video'})`);
       await this.replyWithPrivacyLink(post, videoInfo);
+    } else {
+      console.log(`❌ No video URLs found in post`);
     }
   }
 
@@ -147,10 +159,14 @@ export class BskyBot {
 
   private async replyWithPrivacyLink(originalPost: any, videoInfo: VideoUrlInfo): Promise<void> {
     try {
+      console.log(`🚀 Creating privacy link for ${videoInfo.platform} URL: ${videoInfo.url}`);
       const privacyUrl = URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
       
       const platformEmoji = this.getPlatformEmoji(videoInfo.platform);
       const replyText = `🔒 Here's a privacy-friendly ${videoInfo.platform} link: ${privacyUrl} ${platformEmoji}`;
+      
+      console.log(`💬 Posting reply: ${replyText}`);
+      console.log(`📍 Replying to post: ${originalPost.uri}`);
       
       await this.agent.post({
         text: replyText,
@@ -160,9 +176,9 @@ export class BskyBot {
         }
       });
       
-      console.log(`Replied with privacy link: ${privacyUrl}`);
+      console.log(`✅ Successfully replied with privacy link: ${privacyUrl}`);
     } catch (error) {
-      console.error('Error posting reply:', error);
+      console.error('❌ Error posting reply:', error);
     }
   }
 
