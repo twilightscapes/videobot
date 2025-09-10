@@ -262,6 +262,28 @@ export class BskyBot {
       console.log(`📍 Original post: ${originalPost.uri}`);
       console.log(`📍 Root post: ${rootPost ? rootPost.uri : 'N/A'}`);
       
+      // Calculate facets to make the URL clickable
+      const urlStart = replyText.indexOf(privacyUrl);
+      const urlByteStart = Buffer.byteLength(replyText.substring(0, urlStart), 'utf8');
+      const urlByteEnd = urlByteStart + Buffer.byteLength(privacyUrl, 'utf8');
+      
+      const facets = [
+        {
+          index: {
+            byteStart: urlByteStart,
+            byteEnd: urlByteEnd
+          },
+          features: [
+            {
+              $type: 'app.bsky.richtext.facet#link',
+              uri: privacyUrl
+            }
+          ]
+        }
+      ];
+      
+      console.log(`🔗 URL facet: ${urlByteStart}-${urlByteEnd} for "${privacyUrl}"`);
+      
       // For comments: reply to the original video post to show in main thread
       let rootUri = originalPost.uri;
       let rootCid = originalPost.cid;
@@ -274,6 +296,7 @@ export class BskyBot {
       
       await this.agent.post({
         text: replyText,
+        facets: facets,
         reply: {
           root: {
             uri: rootUri,
