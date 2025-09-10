@@ -12,14 +12,39 @@ export interface BotConfig {
 export class BskyBot {
   private agent: BskyAgent;
   private config: BotConfig;
-  private lastCheckTime: Date;
 
   constructor(config: BotConfig) {
     this.agent = new BskyAgent({
       service: 'https://bsky.social'
     });
     this.config = config;
-    this.lastCheckTime = new Date(Date.now() - 30 * 60 * 1000); // Start checking from 30 minutes ago
+  }
+
+  private async hasAlreadyReplied(postUri: string): Promise<boolean> {
+    try {
+      // Get the post thread to see if we've already replied
+      const threadResponse = await this.agent.app.bsky.feed.getPostThread({
+        uri: postUri,
+        depth: 1
+      });
+
+      if (threadResponse.data.thread && 'replies' in threadResponse.data.thread) {
+        const replies = (threadResponse.data.thread as any).replies || [];
+        
+        // Check if any reply is from our bot account
+        for (const reply of replies) {
+          if (reply.post && reply.post.author && reply.post.author.handle === this.config.handle) {
+            console.log(`✅ Already replied to post: ${postUri}`);
+            return true;
+          }
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.log(`❌ Error checking replies for ${postUri}, assuming not replied:`, error);
+      return false;
+    }
   }
 
   async start(): Promise<void> {
@@ -99,36 +124,45 @@ export class BskyBot {
           console.log(`🔗 Post URI: ${post.uri}`);
           console.log(`🏷️ Contains hashtag: ${text.includes(this.config.hashtag)}`);
           console.log(`📅 Post date: ${postDate.toISOString()}`);
-          console.log(`🕐 Last check: ${this.lastCheckTime.toISOString()}`);
-          console.log(`🆕 Is new: ${postDate > this.lastCheckTime}`);
           
-          // Check if post contains our hashtag and is newer than last check
-          if (text.includes(this.config.hashtag) && postDate > this.lastCheckTime) {
-            console.log(`🎯 Processing new post with hashtag: ${text.substring(0, 100)}...`);
-            
-            // Check if this is a reply/comment
+          // Check if post contains our hashtag and we haven't already replied
+          if (text.includes(this.config.hashtag)) {
+            // Determine target post for reply checking
+            let targetPostUri = post.uri;
             if ((post.record as any).reply) {
-              console.log(`💬 This is a comment, checking parent post for video URLs...`);
-              await this.processComment(post, text);
+              // For comments, check if we've replied to the parent post
+              const replyInfo = (post.record as any).reply;
+              targetPostUri = replyInfo.parent.uri || replyInfo.root.uri;
+              console.log(`💬 This is a comment, checking parent post: ${targetPostUri}`);
             } else {
-              // This is a regular post with hashtag, check for video URLs in the same post
-              console.log(`📄 This is a regular post, checking for video URLs...`);
-              await this.processPost(post, text);
+              console.log(`📄 This is a regular post, checking self: ${targetPostUri}`);
             }
             
-            processedCount++;
+            const alreadyReplied = await this.hasAlreadyReplied(targetPostUri);
+            if (!alreadyReplied) {
+              console.log(`🎯 Processing new post with hashtag: ${text.substring(0, 100)}...`);
+              
+              // Check if this is a reply/comment
+              if ((post.record as any).reply) {
+                await this.processComment(post, text);
+              } else {
+                // This is a regular post with hashtag, check for video URLs in the same post
+                await this.processPost(post, text);
+              }
+              
+              processedCount++;
+            } else {
+              console.log(`⏭️ Skipping post (already replied)`);
+            }
           } else {
-            console.log(`⏭️ Skipping post (already processed, no hashtag, or too old)`);
+            console.log(`⏭️ Skipping post (no hashtag)`);
           }
         } else {
           console.log(`❌ Skipping post (no text content)`);
         }
       }
       
-      // Update last check time
-      this.lastCheckTime = new Date();
       console.log(`🏁 Processed ${processedCount} new posts`);
-      console.log(`⏰ Updated last check time to: ${this.lastCheckTime.toISOString()}`);
       
     } catch (error) {
       console.error('❌ Error searching for posts:', error);
@@ -148,12 +182,14 @@ export class BskyBot {
       for (const item of response.data.feed) {
         if (item.post.record && typeof item.post.record === 'object' && 'text' in item.post.record) {
           const text = item.post.record.text as string;
-          const postDate = new Date((item.post.record as any).createdAt);
           
-          // Check if post contains our hashtag and is newer than last check
-          if (text.includes(this.config.hashtag) && postDate > this.lastCheckTime) {
-            console.log(`Found recent post with hashtag: ${text.substring(0, 100)}...`);
-            await this.processPost(item.post, text);
+          // Check if post contains our hashtag and we haven't replied yet
+          if (text.includes(this.config.hashtag)) {
+            const alreadyReplied = await this.hasAlreadyReplied(item.post.uri);
+            if (!alreadyReplied) {
+              console.log(`Found new post with hashtag: ${text.substring(0, 100)}...`);
+              await this.processPost(item.post, text);
+            }
           }
         }
       }
