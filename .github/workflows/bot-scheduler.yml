@@ -2,19 +2,29 @@ name: Run Bluesky Bot
 
 on:
   schedule:
-    # Run every 1 minute for maximum speed
-    - cron: '*/1 * * * *'
+    # Multiple overlapping schedules for reliability
+    - cron: '*/1 * * * *'    # Every minute
+    - cron: '0,30 * * * *'   # Every 30 seconds (at :00 and :30)
+    - cron: '15,45 * * * *'  # Every 30 seconds offset (at :15 and :45)
   workflow_dispatch: # Allow manual triggering
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
+      - name: Show current time
+        run: |
+          echo "Workflow started at: $(date)"
+          echo "UTC time: $(date -u)"
       - name: Trigger Bot Function (First Check)
         run: |
-          curl -X GET "https://bot.videoprivacy.org/.netlify/functions/bot"
+          echo "First check at: $(date)"
+          curl -X GET "https://bot.videoprivacy.org/.netlify/functions/bot" -w "Response time: %{time_total}s\n"
       - name: Wait 30 seconds
-        run: sleep 30
+        run: |
+          echo "Waiting 30 seconds..."
+          sleep 30
       - name: Trigger Bot Function (Second Check)
         run: |
-          curl -X GET "https://bot.videoprivacy.org/.netlify/functions/bot"
+          echo "Second check at: $(date)"
+          curl -X GET "https://bot.videoprivacy.org/.netlify/functions/bot" -w "Response time: %{time_total}s\n"

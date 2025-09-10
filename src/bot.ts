@@ -127,15 +127,12 @@ export class BskyBot {
           
           // Check if post contains our hashtag and we haven't already replied
           if (text.includes(this.config.hashtag)) {
-            // Determine target post for reply checking
-            let targetPostUri = post.uri;
+            // Always check if we've replied to THIS specific post (not parent)
+            const targetPostUri = post.uri;
             if ((post.record as any).reply) {
-              // For comments, check if we've replied to the parent post
-              const replyInfo = (post.record as any).reply;
-              targetPostUri = replyInfo.parent.uri || replyInfo.root.uri;
-              console.log(`💬 This is a comment, checking parent post: ${targetPostUri}`);
+              console.log(`💬 This is a comment, checking if we replied to this comment: ${targetPostUri}`);
             } else {
-              console.log(`📄 This is a regular post, checking self: ${targetPostUri}`);
+              console.log(`📄 This is a regular post, checking if we replied to this post: ${targetPostUri}`);
             }
             
             const alreadyReplied = await this.hasAlreadyReplied(targetPostUri);
