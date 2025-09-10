@@ -8,7 +8,7 @@ async function main() {
   const bot = new BskyBot({
     handle: process.env.BLUESKY_HANDLE!,
     password: process.env.BLUESKY_PASSWORD!,
-    hashtag: process.env.HASHTAG_TO_MONITOR || '#youtubeprivacy',
+    hashtag: process.env.HASHTAG_TO_MONITOR || '#videoprivacy',
     privacyDomain: process.env.PRIVACY_DOMAIN || 'your-domain.org'
   });
 
