@@ -177,8 +177,14 @@ export class BskyBot {
       await this.agent.post({
         text: replyText,
         reply: {
-          root: originalPost.uri,
-          parent: originalPost.uri
+          root: {
+            uri: originalPost.uri,
+            cid: originalPost.cid
+          },
+          parent: {
+            uri: originalPost.uri,
+            cid: originalPost.cid
+          }
         }
       });
       
