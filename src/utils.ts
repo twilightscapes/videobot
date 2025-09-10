@@ -131,9 +131,15 @@ export class URLUtils {
   }
 
   /**
-   * Generate privacy-friendly URL
+   * Generate privacy-friendly URL with just the video ID
    */
   static createPrivacyUrl(originalUrl: string, privacyDomain: string): string {
+    // Extract video info to get the ID
+    const videoInfo = this.extractVideoInfo(originalUrl);
+    if (videoInfo && videoInfo.platform === 'youtube') {
+      return `https://${privacyDomain}/video?video=${videoInfo.id}`;
+    }
+    // For non-YouTube or if extraction fails, fall back to full URL
     return `https://${privacyDomain}/video?video=${encodeURIComponent(originalUrl)}`;
   }
 

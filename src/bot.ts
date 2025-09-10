@@ -232,7 +232,8 @@ export class BskyBot {
         
         if (videoInfo) {
           console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url}`);
-          await this.replyWithPrivacyLink(commentPost, videoInfo);
+          // Reply to the original video post, but with proper threading
+          await this.replyWithPrivacyLink(commentPost, videoInfo, parentPost);
         } else {
           console.log(`❌ No video URLs found in parent post (text, embed, or facets)`);
         }
@@ -249,27 +250,47 @@ export class BskyBot {
     return info && info.platform === 'youtube' ? info.url : null;
   }
 
-  private async replyWithPrivacyLink(originalPost: any, videoInfo: VideoUrlInfo): Promise<void> {
+  private async replyWithPrivacyLink(originalPost: any, videoInfo: VideoUrlInfo, rootPost?: any): Promise<void> {
     try {
       console.log(`🚀 Creating privacy link for ${videoInfo.platform} URL: ${videoInfo.url}`);
       const privacyUrl = URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
       
-      const platformEmoji = this.getPlatformEmoji(videoInfo.platform);
-      const replyText = `🔒 Here's a privacy-friendly ${videoInfo.platform} link: ${privacyUrl} ${platformEmoji}`;
+      const replyText = `Here's a privacy-friendly ${videoInfo.platform} link: ${privacyUrl}`;
       
       console.log(`💬 Posting reply: ${replyText}`);
       console.log(`📍 Replying to post: ${originalPost.uri}`);
       
+      // Create facets to make the URL a clickable link card
+      const facets = [
+        {
+          index: {
+            byteStart: replyText.indexOf(privacyUrl),
+            byteEnd: replyText.indexOf(privacyUrl) + privacyUrl.length
+          },
+          features: [
+            {
+              $type: 'app.bsky.richtext.facet#link',
+              uri: privacyUrl
+            }
+          ]
+        }
+      ];
+      
+      // If we have a root post (video post), reply to it directly so it shows in main thread
+      // Otherwise reply to the original post
+      const targetPost = rootPost || originalPost;
+      
       await this.agent.post({
         text: replyText,
+        facets: facets,
         reply: {
           root: {
-            uri: originalPost.uri,
-            cid: originalPost.cid
+            uri: targetPost.uri,
+            cid: targetPost.cid
           },
           parent: {
-            uri: originalPost.uri,
-            cid: originalPost.cid
+            uri: targetPost.uri,
+            cid: targetPost.cid
           }
         }
       });
@@ -278,16 +299,5 @@ export class BskyBot {
     } catch (error) {
       console.error('❌ Error posting reply:', error);
     }
-  }
-
-  private getPlatformEmoji(platform: string): string {
-    const emojis: { [key: string]: string } = {
-      'youtube': '📺',
-      'tiktok': '🎵',
-      'vimeo': '🎬',
-      'twitch': '🎮',
-      'dailymotion': '📹'
-    };
-    return emojis[platform] || '🎥';
   }
 }
