@@ -49,10 +49,7 @@ A bot for Bluesky that monitors posts with specific hashtags, extracts video URL
    
    Edit `.env` with your Bluesky credentials:
    ```
-   BLUESKY_HANDLE=your-bot-handle.bsky.social
-   BLUESKY_PASSWORD=your-app-password
-   HASHTAG_TO_MONITOR=#youtubeprivacy
-   PRIVACY_DOMAIN=videoprivacy.org
+
    ```
 
 3. **Development options**:
