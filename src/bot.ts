@@ -255,34 +255,12 @@ export class BskyBot {
       console.log(`🚀 Creating privacy link for ${videoInfo.platform} URL: ${videoInfo.url}`);
       const privacyUrl = URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
       
-      // Put URL on its own line to help generate link card
-      const replyText = `Here's a privacy-friendly ${videoInfo.platform} link:\n\n${privacyUrl}`;
+      // Short prefix with URL on new line
+      const replyText = `Privacy link:\n${privacyUrl}`;
       
       console.log(`💬 Posting reply: ${replyText}`);
       console.log(`📍 Original post: ${originalPost.uri}`);
       console.log(`📍 Root post: ${rootPost ? rootPost.uri : 'N/A'}`);
-      
-      // Calculate byte positions for the URL (UTF-8 encoded)
-      const urlStartIndex = replyText.indexOf(privacyUrl);
-      const urlByteStart = Buffer.byteLength(replyText.substring(0, urlStartIndex), 'utf8');
-      const urlByteEnd = urlByteStart + Buffer.byteLength(privacyUrl, 'utf8');
-      
-      const facets = [
-        {
-          index: {
-            byteStart: urlByteStart,
-            byteEnd: urlByteEnd
-          },
-          features: [
-            {
-              $type: 'app.bsky.richtext.facet#link',
-              uri: privacyUrl
-            }
-          ]
-        }
-      ];
-      
-      console.log(`🔗 Facet info: start=${urlByteStart}, end=${urlByteEnd}, url="${privacyUrl}"`);
       
       // For comments: reply to the original video post to show in main thread
       let rootUri = originalPost.uri;
@@ -296,7 +274,6 @@ export class BskyBot {
       
       await this.agent.post({
         text: replyText,
-        facets: facets,
         reply: {
           root: {
             uri: rootUri,
