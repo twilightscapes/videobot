@@ -1,0 +1,21 @@
+name: Test GitHub Actions
+
+on:
+  workflow_dispatch: # Manual trigger only
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create test file
+        run: echo "Actions working at $(date)" > actions-test.txt
+      - name: Commit test file
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add actions-test.txt
+          git commit -m "Test: GitHub Actions working" || exit 0
+          git push
