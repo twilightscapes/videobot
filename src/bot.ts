@@ -22,27 +22,43 @@ export class BskyBot {
 
   private async hasAlreadyReplied(postUri: string): Promise<boolean> {
     try {
+      console.log(`🔍 Checking replies for: ${postUri}`);
+      
       // Get the post thread to see if we've already replied
       const threadResponse = await this.agent.app.bsky.feed.getPostThread({
         uri: postUri,
         depth: 1
       });
 
+      console.log(`📡 Thread response received for: ${postUri}`);
+
       if (threadResponse.data.thread && 'replies' in threadResponse.data.thread) {
         const replies = (threadResponse.data.thread as any).replies || [];
+        console.log(`💬 Found ${replies.length} replies to check`);
         
         // Check if any reply is from our bot account
-        for (const reply of replies) {
-          if (reply.post && reply.post.author && reply.post.author.handle === this.config.handle) {
-            console.log(`✅ Already replied to post: ${postUri}`);
-            return true;
+        for (let i = 0; i < replies.length; i++) {
+          const reply = replies[i];
+          if (reply.post && reply.post.author && reply.post.author.handle) {
+            const replyAuthor = reply.post.author.handle;
+            console.log(`👤 Reply ${i + 1} from: ${replyAuthor}`);
+            
+            if (replyAuthor === this.config.handle) {
+              console.log(`✅ FOUND existing reply from bot (${this.config.handle}) to: ${postUri}`);
+              return true;
+            }
           }
         }
+        
+        console.log(`❌ NO existing replies from bot (${this.config.handle}) found`);
+      } else {
+        console.log(`📭 No replies found for post: ${postUri}`);
       }
       
       return false;
     } catch (error) {
-      console.log(`❌ Error checking replies for ${postUri}, assuming not replied:`, error);
+      console.error(`❌ Error checking replies for ${postUri}:`, error);
+      console.log(`🤷 Assuming not replied due to error`);
       return false;
     }
   }
@@ -105,6 +121,7 @@ export class BskyBot {
     try {
       // Try search first, but with better error handling
       console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
+      console.log(`🔍 Search query: "${this.config.hashtag}"`);
       
       const response = await this.agent.app.bsky.feed.searchPosts({
         q: this.config.hashtag,
@@ -113,53 +130,65 @@ export class BskyBot {
       });
 
       console.log(`📊 Found ${response.data.posts.length} posts with hashtag`);
+      console.log(`📊 Full search response:`, JSON.stringify(response.data, null, 2));
 
       let processedCount = 0;
       for (const post of response.data.posts) {
+        console.log(`\n🔄 === Processing Post ${processedCount + 1}/${response.data.posts.length} ===`);
+        console.log(`📍 Post URI: ${post.uri}`);
+        console.log(`👤 Post Author: ${post.author.handle} (${post.author.displayName})`);
+        
         if (post.record && typeof post.record === 'object' && 'text' in post.record) {
           const text = post.record.text as string;
           const postDate = new Date((post.record as any).createdAt);
           
-          console.log(`📝 Checking post: ${text.substring(0, 150)}`);
-          console.log(`🔗 Post URI: ${post.uri}`);
-          console.log(`🏷️ Contains hashtag: ${text.includes(this.config.hashtag)}`);
-          console.log(`📅 Post date: ${postDate.toISOString()}`);
+          console.log(`📝 Post text: "${text}"`);
+          console.log(`� Post date: ${postDate.toISOString()}`);
+          console.log(`🏷️ Contains hashtag "${this.config.hashtag}": ${text.includes(this.config.hashtag)}`);
+          
+          // Log if this is a reply/comment
+          if ((post.record as any).reply) {
+            const replyInfo = (post.record as any).reply;
+            console.log(`� This is a COMMENT replying to: ${replyInfo.parent?.uri || replyInfo.root?.uri}`);
+          } else {
+            console.log(`📄 This is a REGULAR POST (not a comment)`);
+          }
           
           // Check if post contains our hashtag and we haven't already replied
           if (text.includes(this.config.hashtag)) {
             // Always check if we've replied to THIS specific post (not parent)
             const targetPostUri = post.uri;
-            if ((post.record as any).reply) {
-              console.log(`💬 This is a comment, checking if we replied to this comment: ${targetPostUri}`);
-            } else {
-              console.log(`📄 This is a regular post, checking if we replied to this post: ${targetPostUri}`);
-            }
+            console.log(`🎯 Checking if we've replied to: ${targetPostUri}`);
             
             const alreadyReplied = await this.hasAlreadyReplied(targetPostUri);
+            console.log(`🤔 Already replied? ${alreadyReplied}`);
+            
             if (!alreadyReplied) {
-              console.log(`🎯 Processing new post with hashtag: ${text.substring(0, 100)}...`);
+              console.log(`✅ Processing NEW post with hashtag: ${text.substring(0, 100)}...`);
               
               // Check if this is a reply/comment
               if ((post.record as any).reply) {
+                console.log(`🔄 Calling processComment...`);
                 await this.processComment(post, text);
               } else {
+                console.log(`🔄 Calling processPost...`);
                 // This is a regular post with hashtag, check for video URLs in the same post
                 await this.processPost(post, text);
               }
               
               processedCount++;
             } else {
-              console.log(`⏭️ Skipping post (already replied)`);
+              console.log(`⏭️ SKIPPING post (already replied)`);
             }
           } else {
-            console.log(`⏭️ Skipping post (no hashtag)`);
+            console.log(`⏭️ SKIPPING post (no hashtag found)`);
           }
         } else {
-          console.log(`❌ Skipping post (no text content)`);
+          console.log(`❌ SKIPPING post (no text content)`);
         }
       }
       
-      console.log(`🏁 Processed ${processedCount} new posts`);
+      console.log(`🏁 SUMMARY: Processed ${processedCount} new posts out of ${response.data.posts.length} total`);
       
     } catch (error) {
       console.error('❌ Error searching for posts:', error);
