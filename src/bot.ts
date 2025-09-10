@@ -77,40 +77,46 @@ export class BskyBot {
 
   private async checkTimeline(): Promise<void> {
     try {
-      // Search for posts with our hashtag instead of just checking timeline
-      console.log(`Searching for posts with hashtag: ${this.config.hashtag}`);
+      // Try search first, but with better error handling
+      console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
       
       const response = await this.agent.app.bsky.feed.searchPosts({
         q: this.config.hashtag,
-        limit: 25
+        limit: 25,
+        sort: 'latest' // Get the most recent posts
       });
 
-      console.log(`Found ${response.data.posts.length} posts with hashtag`);
+      console.log(`📊 Found ${response.data.posts.length} posts with hashtag`);
 
+      let processedCount = 0;
       for (const post of response.data.posts) {
         if (post.record && typeof post.record === 'object' && 'text' in post.record) {
           const text = post.record.text as string;
           
-          console.log(`Checking post: ${text.substring(0, 150)}`);
-          console.log(`Post URI: ${post.uri}`);
-          console.log(`Contains hashtag: ${text.includes(this.config.hashtag)}`);
-          console.log(`Already processed: ${this.processedPosts.has(post.uri)}`);
+          console.log(`📝 Checking post: ${text.substring(0, 150)}`);
+          console.log(`🔗 Post URI: ${post.uri}`);
+          console.log(`🏷️ Contains hashtag: ${text.includes(this.config.hashtag)}`);
+          console.log(`✅ Already processed: ${this.processedPosts.has(post.uri)}`);
           
           // Check if post contains our hashtag and hasn't been processed
           if (text.includes(this.config.hashtag) && !this.processedPosts.has(post.uri)) {
-            console.log(`✅ Processing new post with hashtag: ${text.substring(0, 100)}...`);
+            console.log(`🎯 Processing new post with hashtag: ${text.substring(0, 100)}...`);
             await this.processPost(post, text);
             this.processedPosts.add(post.uri);
+            processedCount++;
           } else {
-            console.log(`❌ Skipping post (already processed or no hashtag match)`);
+            console.log(`⏭️ Skipping post (already processed or no hashtag match)`);
           }
         } else {
           console.log(`❌ Skipping post (no text content)`);
         }
       }
+      
+      console.log(`🏁 Processed ${processedCount} new posts`);
+      
     } catch (error) {
-      console.error('Error searching for posts:', error);
-      // Fallback to timeline if search fails
+      console.error('❌ Error searching for posts:', error);
+      console.log('🔄 Falling back to timeline check...');
       await this.checkTimelineFallback();
     }
   }
