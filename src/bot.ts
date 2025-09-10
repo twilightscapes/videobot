@@ -101,7 +101,17 @@ export class BskyBot {
           // Check if post contains our hashtag and hasn't been processed
           if (text.includes(this.config.hashtag) && !this.processedPosts.has(post.uri)) {
             console.log(`🎯 Processing new post with hashtag: ${text.substring(0, 100)}...`);
-            await this.processPost(post, text);
+            
+            // Check if this is a reply/comment
+            if ((post.record as any).reply) {
+              console.log(`💬 This is a comment, checking parent post for video URLs...`);
+              await this.processComment(post, text);
+            } else {
+              // This is a regular post with hashtag, check for video URLs in the same post
+              console.log(`📄 This is a regular post, checking for video URLs...`);
+              await this.processPost(post, text);
+            }
+            
             this.processedPosts.add(post.uri);
             processedCount++;
           } else {
@@ -155,6 +165,45 @@ export class BskyBot {
       await this.replyWithPrivacyLink(post, videoInfo);
     } else {
       console.log(`❌ No video URLs found in post`);
+    }
+  }
+
+  private async processComment(commentPost: any, commentText: string): Promise<void> {
+    try {
+      console.log(`💭 Processing comment: ${commentText}`);
+      
+      // Get the parent post that this comment is replying to
+      const replyInfo = (commentPost.record as any).reply;
+      const parentUri = replyInfo.parent.uri || replyInfo.root.uri;
+      
+      console.log(`📍 Getting parent post: ${parentUri}`);
+      
+      // Fetch the parent post
+      const parentResponse = await this.agent.getPost({
+        repo: parentUri.split('/')[2], // Extract the DID from the URI
+        rkey: parentUri.split('/').pop() // Extract the record key
+      });
+      
+      if (parentResponse && parentResponse.value) {
+        const parentPost = parentResponse.value;
+        if (typeof parentPost === 'object' && 'text' in parentPost) {
+          const parentText = (parentPost as any).text;
+          console.log(`📝 Parent post text: ${parentText.substring(0, 200)}`);
+          
+          // Look for video URLs in the parent post
+          const videoInfo = URLUtils.extractVideoInfo(parentText);
+          
+          if (videoInfo) {
+            console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url}`);
+            // Reply to the comment with the privacy link
+            await this.replyWithPrivacyLink(commentPost, videoInfo);
+          } else {
+            console.log(`❌ No video URLs found in parent post`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error processing comment:`, error);
     }
   }
 
