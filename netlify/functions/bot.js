@@ -9,7 +9,7 @@ exports.handler = async (event, context) => {
       handle: process.env.BLUESKY_HANDLE,
       password: process.env.BLUESKY_PASSWORD,
       hashtag: process.env.HASHTAG_TO_MONITOR || '#youtubeprivacy',
-      privacyDomain: process.env.PRIVACY_DOMAIN || 'videoprivacy.org'
+      privacyDomain: process.env.PRIVACY_DOMAIN || 'your-domain.org'
     });
 
     // Run a single check cycle

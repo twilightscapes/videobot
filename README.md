@@ -75,7 +75,7 @@ A bot for Bluesky that monitors posts with specific hashtags, extracts video URL
 
 ### Example Bot Reply:
 ```
-🔒 Here's a privacy-friendly youtube link: https://videoprivacy.org/video?video=https%3A//youtube.com/watch%3Fv%3DdQw4w9WgXcQ 📺
+🔒 Here's a privacy-friendly youtube link: https://your-domain.org/video?video=https%3A//youtube.com/watch%3Fv%3DdQw4w9WgXcQ 📺
 ```
 
 ## Deployment Options
