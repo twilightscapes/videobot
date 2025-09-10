@@ -294,9 +294,20 @@ export class BskyBot {
         console.log(`🎯 Replying to video post to appear in main thread: ${rootUri}`);
       }
       
+      // Try creating an external embed for better link card support
+      const embed = {
+        $type: 'app.bsky.embed.external',
+        external: {
+          uri: privacyUrl,
+          title: 'Privacy-friendly video link',
+          description: `Watch this ${videoInfo.platform} video without tracking`
+        }
+      };
+      
       await this.agent.post({
         text: replyText,
         facets: facets,
+        embed: embed,
         reply: {
           root: {
             uri: rootUri,
