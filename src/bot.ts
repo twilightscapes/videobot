@@ -169,11 +169,21 @@ export class BskyBot {
               // Check if this is a reply/comment
               if ((post.record as any).reply) {
                 console.log(`🔄 Calling processComment...`);
-                await this.processComment(post, text);
+                try {
+                  await this.processComment(post, text);
+                  console.log(`✅ processComment completed successfully`);
+                } catch (error) {
+                  console.error(`❌ Error in processComment:`, error);
+                }
               } else {
                 console.log(`🔄 Calling processPost...`);
-                // This is a regular post with hashtag, check for video URLs in the same post
-                await this.processPost(post, text);
+                try {
+                  // This is a regular post with hashtag, check for video URLs in the same post
+                  await this.processPost(post, text);
+                  console.log(`✅ processPost completed successfully`);
+                } catch (error) {
+                  console.error(`❌ Error in processPost:`, error);
+                }
               }
               
               processedCount++;
