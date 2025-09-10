@@ -255,17 +255,23 @@ export class BskyBot {
       console.log(`🚀 Creating privacy link for ${videoInfo.platform} URL: ${videoInfo.url}`);
       const privacyUrl = URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
       
-      const replyText = `Here's a privacy-friendly ${videoInfo.platform} link: ${privacyUrl}`;
+      // Put URL on its own line to help generate link card
+      const replyText = `Here's a privacy-friendly ${videoInfo.platform} link:\n\n${privacyUrl}`;
       
       console.log(`💬 Posting reply: ${replyText}`);
-      console.log(`📍 Replying to post: ${originalPost.uri}`);
+      console.log(`📍 Original post: ${originalPost.uri}`);
+      console.log(`📍 Root post: ${rootPost ? rootPost.uri : 'N/A'}`);
       
-      // Create facets to make the URL a clickable link card
+      // Calculate byte positions for the URL (UTF-8 encoded)
+      const urlStartIndex = replyText.indexOf(privacyUrl);
+      const urlByteStart = Buffer.byteLength(replyText.substring(0, urlStartIndex), 'utf8');
+      const urlByteEnd = urlByteStart + Buffer.byteLength(privacyUrl, 'utf8');
+      
       const facets = [
         {
           index: {
-            byteStart: replyText.indexOf(privacyUrl),
-            byteEnd: replyText.indexOf(privacyUrl) + privacyUrl.length
+            byteStart: urlByteStart,
+            byteEnd: urlByteEnd
           },
           features: [
             {
@@ -276,21 +282,29 @@ export class BskyBot {
         }
       ];
       
-      // If we have a root post (video post), reply to it directly so it shows in main thread
-      // Otherwise reply to the original post
-      const targetPost = rootPost || originalPost;
+      console.log(`🔗 Facet info: start=${urlByteStart}, end=${urlByteEnd}, url="${privacyUrl}"`);
+      
+      // For comments: reply to the original video post to show in main thread
+      let rootUri = originalPost.uri;
+      let rootCid = originalPost.cid;
+      
+      if (rootPost) {
+        rootUri = rootPost.uri;
+        rootCid = rootPost.cid;
+        console.log(`🎯 Replying to video post to appear in main thread: ${rootUri}`);
+      }
       
       await this.agent.post({
         text: replyText,
         facets: facets,
         reply: {
           root: {
-            uri: targetPost.uri,
-            cid: targetPost.cid
+            uri: rootUri,
+            cid: rootCid
           },
           parent: {
-            uri: targetPost.uri,
-            cid: targetPost.cid
+            uri: rootUri,
+            cid: rootCid
           }
         }
       });
@@ -298,6 +312,7 @@ export class BskyBot {
       console.log(`✅ Successfully replied with privacy link: ${privacyUrl}`);
     } catch (error) {
       console.error('❌ Error posting reply:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
     }
   }
 }
