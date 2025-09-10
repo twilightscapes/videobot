@@ -21,10 +21,7 @@ A bot for Bluesky that monitors posts with specific hashtags, extracts video URL
 ### 2. **Configure Environment Variables**
    In your Netlify dashboard, add these environment variables:
    ```
-   BLUESKY_HANDLE=your-bot-handle.bsky.social
-   BLUESKY_PASSWORD=your-app-password
-   HASHTAG_TO_MONITOR=#youtubeprivacy
-   PRIVACY_DOMAIN=videoprivacy.org
+
    ```
 
 ### 3. **Set up Scheduled Function** (Optional)
@@ -95,10 +92,7 @@ A bot for Bluesky that monitors posts with specific hashtags, extracts video URL
 
 ## Configuration
 
-- `BLUESKY_HANDLE`: Your bot's Bluesky handle (e.g., `mybot.bsky.social`)
-- `BLUESKY_PASSWORD`: App password generated in Bluesky settings
-- `HASHTAG_TO_MONITOR`: The hashtag to monitor (default: `#youtubeprivacy`)
-- `PRIVACY_DOMAIN`: Privacy service domain (default: `videoprivacy.org`)
+
 
 ## Security Notes
 
