@@ -237,43 +237,21 @@ export class BskyBot {
   private async processPost(post: any, text: string): Promise<void> {
     console.log(`🔍 Processing post for video URLs: ${text.substring(0, 200)}`);
 
-    // 1. Always use embed/card data if available (never truncated)
+    // Only use embed/card data (never truncated) - NO FALLBACKS TO PREVENT BAD LINKS
     let videoInfo = null;
     if (post.embed && post.embed.external && post.embed.external.uri) {
       const embedUri = post.embed.external.uri;
       console.log(`🌐 Using embed.external.uri for video: ${embedUri}`);
       videoInfo = URLUtils.extractVideoInfo(embedUri);
-    }
-
-    // 2. If no embed, check facets (link annotations)
-    if (!videoInfo && post.record && post.record.facets) {
-      const facets = post.record.facets;
-      console.log(`🔗 Found facets:`, JSON.stringify(facets, null, 2));
-      for (const facet of facets || []) {
-        for (const feature of facet.features || []) {
-          if (feature.$type === 'app.bsky.richtext.facet#link' && feature.uri) {
-            console.log(`🌐 Found facet URI: ${feature.uri}`);
-            videoInfo = URLUtils.extractVideoInfo(feature.uri);
-            if (videoInfo) break;
-          }
-        }
-        if (videoInfo) break;
+      
+      if (videoInfo && videoInfo.url) {
+        console.log(`✅ Found ${videoInfo.platform} URL: ${videoInfo.url} (${videoInfo.type || 'video'})`);
+        await this.replyWithPrivacyLink(post, videoInfo);
+      } else {
+        console.log(`❌ Embed URI is not a supported video platform: ${embedUri}`);
       }
-    }
-
-    // 3. Only as a last resort, try extracting from text (which may be truncated)
-    if (!videoInfo) {
-      console.log(`🔤 No video found in embed/facets, trying text extraction (may be truncated)`);
-      videoInfo = URLUtils.extractVideoInfo(text);
-    }
-
-    if (videoInfo && videoInfo.url && !videoInfo.url.endsWith('...')) {
-      console.log(`✅ Found ${videoInfo.platform} URL: ${videoInfo.url} (${videoInfo.type || 'video'})`);
-      await this.replyWithPrivacyLink(post, videoInfo);
-    } else if (videoInfo && videoInfo.url && videoInfo.url.endsWith('...')) {
-      console.log(`❌ Truncated URL detected, refusing to reply: ${videoInfo.url}`);
     } else {
-      console.log(`❌ No video URLs found in post (embed, facets, or text)`);
+      console.log(`❌ No embed/external/uri found - skipping post (no fallbacks allowed to prevent bad links)`);
     }
   }
 
@@ -306,45 +284,22 @@ export class BskyBot {
           console.log(`📝 Parent post text: "${parentText}"`);
         }
         
-        // First try to find video URLs in the text
-        let videoInfo = URLUtils.extractVideoInfo(parentText);
-        
-        // If no video found in text, check for embed/card data
-        if (!videoInfo && parentPost.embed) {
-          const embed = parentPost.embed;
-          console.log(`🔗 Found embed data:`, JSON.stringify(embed, null, 2));
+        // Only use embed/card data (never truncated) - NO FALLBACKS TO PREVENT BAD LINKS
+        let videoInfo = null;
+        if (parentPost.embed && parentPost.embed.external && parentPost.embed.external.uri) {
+          const embedUri = parentPost.embed.external.uri;
+          console.log(`🌐 Using embed.external.uri for video: ${embedUri}`);
+          videoInfo = URLUtils.extractVideoInfo(embedUri);
           
-          // Check if it's an external embed with a URI
-          if (embed.external && embed.external.uri) {
-            const embedUri = embed.external.uri;
-            console.log(`🌐 Found embed URI: ${embedUri}`);
-            videoInfo = URLUtils.extractVideoInfo(embedUri);
+          if (videoInfo && videoInfo.url) {
+            console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url} (${videoInfo.type || 'video'})`);
+            // Reply to the commenter who requested it, not the original post
+            await this.replyWithPrivacyLink(commentPost, videoInfo);
+          } else {
+            console.log(`❌ Embed URI is not a supported video platform: ${embedUri}`);
           }
-        }
-        
-        // Also check for any URLs in facets (link annotations)
-        if (!videoInfo && parentPost.record && parentPost.record.facets) {
-          const facets = parentPost.record.facets;
-          console.log(`🔗 Found facets:`, JSON.stringify(facets, null, 2));
-          
-          for (const facet of facets || []) {
-            for (const feature of facet.features || []) {
-              if (feature.$type === 'app.bsky.richtext.facet#link' && feature.uri) {
-                console.log(`🌐 Found facet URI: ${feature.uri}`);
-                videoInfo = URLUtils.extractVideoInfo(feature.uri);
-                if (videoInfo) break;
-              }
-            }
-            if (videoInfo) break;
-          }
-        }
-        
-        if (videoInfo) {
-          console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url}`);
-          // Reply to the commenter who requested it, not the original post
-          await this.replyWithPrivacyLink(commentPost, videoInfo);
         } else {
-          console.log(`❌ No video URLs found in parent post (text, embed, or facets)`);
+          console.log(`❌ No embed/external/uri found in parent post - skipping (no fallbacks allowed to prevent bad links)`);
         }
       } else {
         console.log(`❌ Could not retrieve parent post thread`);
