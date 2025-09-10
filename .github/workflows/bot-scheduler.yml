@@ -2,10 +2,8 @@ name: Run Bluesky Bot
 
 on:
   schedule:
-    # Multiple overlapping schedules for reliability
-    - cron: '*/1 * * * *'    # Every minute
-    - cron: '0,30 * * * *'   # Every 30 seconds (at :00 and :30)
-    - cron: '15,45 * * * *'  # Every 30 seconds offset (at :15 and :45)
+    # Run every minute - GitHub Actions can have 1-5 minute delays
+    - cron: '*/1 * * * *'    
   workflow_dispatch: # Allow manual triggering
 
 jobs:
