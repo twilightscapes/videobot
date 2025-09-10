@@ -77,6 +77,38 @@ export class BskyBot {
 
   private async checkTimeline(): Promise<void> {
     try {
+      // Search for posts with our hashtag instead of just checking timeline
+      console.log(`Searching for posts with hashtag: ${this.config.hashtag}`);
+      
+      const response = await this.agent.app.bsky.feed.searchPosts({
+        q: this.config.hashtag,
+        limit: 25
+      });
+
+      console.log(`Found ${response.data.posts.length} posts with hashtag`);
+
+      for (const post of response.data.posts) {
+        if (post.record && typeof post.record === 'object' && 'text' in post.record) {
+          const text = post.record.text as string;
+          
+          // Check if post contains our hashtag and hasn't been processed
+          if (text.includes(this.config.hashtag) && !this.processedPosts.has(post.uri)) {
+            console.log(`Found new post with hashtag: ${text.substring(0, 100)}...`);
+            await this.processPost(post, text);
+            this.processedPosts.add(post.uri);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error searching for posts:', error);
+      // Fallback to timeline if search fails
+      await this.checkTimelineFallback();
+    }
+  }
+
+  private async checkTimelineFallback(): Promise<void> {
+    try {
+      console.log('Falling back to timeline check...');
       const response = await this.agent.getTimeline({
         algorithm: 'reverse-chronological',
         limit: 20
