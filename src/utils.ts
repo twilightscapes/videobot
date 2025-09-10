@@ -16,18 +16,23 @@ export class URLUtils {
    * Extract video URL info from text for multiple platforms
    */
   static extractVideoInfo(text: string): VideoUrlInfo | null {
-    // YouTube
+    // YouTube - Enhanced patterns to capture full URLs
     const youtubePatterns = [
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
-      /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)/,
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/
+      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})(?:\S*)/,
+      /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{11})(?:\S*)/,
+      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})(?:\S*)/
     ];
 
     for (const pattern of youtubePatterns) {
       const match = text.match(pattern);
       if (match) {
+        let fullUrl = match[0];
+        // Ensure URL has protocol
+        if (!fullUrl.startsWith('http')) {
+          fullUrl = 'https://' + fullUrl;
+        }
         return {
-          url: match[0],
+          url: fullUrl,
           platform: 'youtube',
           id: match[1],
           type: match[0].includes('/shorts/') ? 'short' : 'video'
@@ -36,41 +41,57 @@ export class URLUtils {
     }
 
     // Vimeo
-    const vimeoMatch = text.match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(?:video\/)?(\d+)/);
+    const vimeoMatch = text.match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(?:video\/)?(\d+)(?:\S*)/);
     if (vimeoMatch) {
+      let fullUrl = vimeoMatch[0];
+      if (!fullUrl.startsWith('http')) {
+        fullUrl = 'https://' + fullUrl;
+      }
       return {
-        url: vimeoMatch[0],
+        url: fullUrl,
         platform: 'vimeo',
         id: vimeoMatch[1]
       };
     }
 
     // TikTok
-    const tiktokMatch = text.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/.*\/video\/(\d+)/);
+    const tiktokMatch = text.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/.*\/video\/(\d+)(?:\S*)/);
     if (tiktokMatch) {
+      let fullUrl = tiktokMatch[0];
+      if (!fullUrl.startsWith('http')) {
+        fullUrl = 'https://' + fullUrl;
+      }
       return {
-        url: tiktokMatch[0],
+        url: fullUrl,
         platform: 'tiktok',
         id: tiktokMatch[1]
       };
     }
 
     // Twitch
-    const twitchVideoMatch = text.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/videos\/(\d+)/);
+    const twitchVideoMatch = text.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/videos\/(\d+)(?:\S*)/);
     if (twitchVideoMatch) {
+      let fullUrl = twitchVideoMatch[0];
+      if (!fullUrl.startsWith('http')) {
+        fullUrl = 'https://' + fullUrl;
+      }
       return {
-        url: twitchVideoMatch[0],
+        url: fullUrl,
         platform: 'twitch',
         id: twitchVideoMatch[1],
         type: 'video'
       };
     }
 
-    const twitchClipMatch = text.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/\w+\/clip\/(\w+)|(?:https?:\/\/)?clips\.twitch\.tv\/(\w+)/);
+    const twitchClipMatch = text.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/\w+\/clip\/(\w+)|(?:https?:\/\/)?clips\.twitch\.tv\/(\w+)(?:\S*)/);
     if (twitchClipMatch) {
       const clipId = twitchClipMatch[1] || twitchClipMatch[2];
+      let fullUrl = twitchClipMatch[0];
+      if (!fullUrl.startsWith('http')) {
+        fullUrl = 'https://' + fullUrl;
+      }
       return {
-        url: twitchClipMatch[0],
+        url: fullUrl,
         platform: 'twitch',
         id: clipId,
         type: 'clip'
@@ -78,10 +99,14 @@ export class URLUtils {
     }
 
     // Dailymotion
-    const dailymotionMatch = text.match(/(?:https?:\/\/)?(?:www\.)?dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+    const dailymotionMatch = text.match(/(?:https?:\/\/)?(?:www\.)?dailymotion\.com\/video\/([a-zA-Z0-9]+)(?:\S*)/);
     if (dailymotionMatch) {
+      let fullUrl = dailymotionMatch[0];
+      if (!fullUrl.startsWith('http')) {
+        fullUrl = 'https://' + fullUrl;
+      }
       return {
-        url: dailymotionMatch[0],
+        url: fullUrl,
         platform: 'dailymotion',
         id: dailymotionMatch[1]
       };
