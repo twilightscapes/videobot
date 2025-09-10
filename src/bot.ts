@@ -274,8 +274,8 @@ export class BskyBot {
         
         if (videoInfo) {
           console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url}`);
-          // Reply to the original video post, but with proper threading
-          await this.replyWithPrivacyLink(commentPost, videoInfo, parentPost);
+          // Reply to the commenter who requested it, not the original post
+          await this.replyWithPrivacyLink(commentPost, videoInfo);
         } else {
           console.log(`❌ No video URLs found in parent post (text, embed, or facets)`);
         }
@@ -292,7 +292,7 @@ export class BskyBot {
     return info && info.platform === 'youtube' ? info.url : null;
   }
 
-  private async replyWithPrivacyLink(originalPost: any, videoInfo: VideoUrlInfo, rootPost?: any): Promise<void> {
+  private async replyWithPrivacyLink(originalPost: any, videoInfo: VideoUrlInfo): Promise<void> {
     try {
       console.log(`🚀 Creating privacy link for ${videoInfo.platform} URL: ${videoInfo.url}`);
       const privacyUrl = URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
@@ -301,8 +301,7 @@ export class BskyBot {
       const replyText = `Privacy link:\n${privacyUrl}`;
       
       console.log(`💬 Posting reply: ${replyText}`);
-      console.log(`📍 Original post: ${originalPost.uri}`);
-      console.log(`📍 Root post: ${rootPost ? rootPost.uri : 'N/A'}`);
+      console.log(`📍 Replying to: ${originalPost.uri}`);
       
       // Calculate facets to make the URL clickable
       const urlStart = replyText.indexOf(privacyUrl);
@@ -326,14 +325,38 @@ export class BskyBot {
       
       console.log(`🔗 URL facet: ${urlByteStart}-${urlByteEnd} for "${privacyUrl}"`);
       
-      // For comments: reply to the original video post to show in main thread
-      let rootUri = originalPost.uri;
-      let rootCid = originalPost.cid;
+      // Determine reply structure based on whether this is a comment or original post
+      let replyStructure: any;
       
-      if (rootPost) {
-        rootUri = rootPost.uri;
-        rootCid = rootPost.cid;
-        console.log(`🎯 Replying to video post to appear in main thread: ${rootUri}`);
+      if (originalPost.record && originalPost.record.reply) {
+        // This is a comment - reply to the commenter but maintain thread structure
+        const commentReplyInfo = originalPost.record.reply;
+        console.log(`💬 Replying to commenter in thread`);
+        
+        replyStructure = {
+          root: {
+            uri: commentReplyInfo.root.uri,
+            cid: commentReplyInfo.root.cid
+          },
+          parent: {
+            uri: originalPost.uri,
+            cid: originalPost.cid
+          }
+        };
+      } else {
+        // This is an original post - reply to it directly
+        console.log(`📄 Replying to original post`);
+        
+        replyStructure = {
+          root: {
+            uri: originalPost.uri,
+            cid: originalPost.cid
+          },
+          parent: {
+            uri: originalPost.uri,
+            cid: originalPost.cid
+          }
+        };
       }
       
       // Create external embed with uploaded thumbnail
@@ -373,16 +396,7 @@ export class BskyBot {
         text: replyText,
         facets: facets,
         embed: embed,
-        reply: {
-          root: {
-            uri: rootUri,
-            cid: rootCid
-          },
-          parent: {
-            uri: rootUri,
-            cid: rootCid
-          }
-        }
+        reply: replyStructure
       });
       
       console.log(`✅ Successfully replied with privacy link: ${privacyUrl}`);
