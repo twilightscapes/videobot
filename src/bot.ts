@@ -294,8 +294,8 @@ export class BskyBot {
         console.log(`🎯 Replying to video post to appear in main thread: ${rootUri}`);
       }
       
-      // Create external embed - let videoprivacy.org provide thumbnail via Open Graph
-      const embed = {
+      // Create external embed with uploaded thumbnail
+      let embed: any = {
         $type: 'app.bsky.embed.external',
         external: {
           uri: privacyUrl,
@@ -303,6 +303,27 @@ export class BskyBot {
           description: `Watch this video without tracking or data collection`
         }
       };
+      
+      // Try to upload thumbnail for YouTube videos
+      if (videoInfo.platform === 'youtube') {
+        try {
+          const thumbnailUrl = `https://img.youtube.com/vi/${videoInfo.id}/hqdefault.jpg`;
+          console.log(`🖼️ Fetching thumbnail: ${thumbnailUrl}`);
+          
+          const response = await fetch(thumbnailUrl);
+          if (response.ok) {
+            const imageBuffer = await response.arrayBuffer();
+            const blob = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
+              encoding: 'image/jpeg'
+            });
+            
+            embed.external.thumb = blob.data.blob;
+            console.log(`✅ Uploaded thumbnail as blob`);
+          }
+        } catch (error) {
+          console.log(`❌ Failed to upload thumbnail, continuing without: ${error}`);
+        }
+      }
       
       console.log(`📦 Embed structure:`, JSON.stringify(embed, null, 2));
       
