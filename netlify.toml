@@ -5,7 +5,3 @@
 
 [build.environment]
   NODE_VERSION = "20"
-
-# Enable background functions for the bot
-[[functions]]
-  node_bundler = "esbuild"

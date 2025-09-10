@@ -1,9 +1,7 @@
 // Netlify Background Function for Bluesky Bot
-// This function runs periodically to check for new posts
+const { BskyBot } = require('../../dist/bot.js');
 
-import { BskyBot } from '../../dist/bot.js';
-
-export default async (req, context) => {
+exports.handler = async (event, context) => {
   console.log('Netlify function: Bot check triggered');
   
   try {
@@ -17,30 +15,32 @@ export default async (req, context) => {
     // Run a single check cycle
     await bot.runSingleCheck();
     
-    return new Response(JSON.stringify({ 
-      success: true,
-      message: 'Bot check completed successfully',
-      timestamp: new Date().toISOString()
-    }), {
-      status: 200,
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ 
+        success: true,
+        message: 'Bot check completed successfully',
+        timestamp: new Date().toISOString()
+      }),
       headers: {
         'Content-Type': 'application/json',
       }
-    });
+    };
     
   } catch (error) {
     console.error('Netlify bot function error:', error);
     
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: 'Bot function failed',
-      message: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
-    }), {
-      status: 500,
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ 
+        success: false,
+        error: 'Bot function failed',
+        message: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      }),
       headers: {
         'Content-Type': 'application/json',
       }
-    });
+    };
   }
 };
