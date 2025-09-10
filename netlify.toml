@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  functions = "netlify/functions"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Enable background functions for the bot
+[[functions]]
+  node_bundler = "esbuild"

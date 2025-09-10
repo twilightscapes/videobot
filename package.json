@@ -1,0 +1,35 @@
+{
+  "name": "bluesky-youtube-privacy-bot",
+  "version": "1.0.0",
+  "description": "A Bluesky bot that monitors hashtags and converts YouTube URLs to privacy-friendly alternatives",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "dev:netlify": "netlify dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "bluesky",
+    "bot",
+    "at-protocol",
+    "youtube",
+    "privacy"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@atproto/api": "^0.12.0",
+    "@atproto/lexicon": "^0.4.0",
+    "dotenv": "^16.3.1",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^2.0.0",
+    "@types/node": "^20.8.0",
+    "@types/ws": "^8.5.6",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}
