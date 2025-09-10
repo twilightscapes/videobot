@@ -2,14 +2,19 @@ name: Run Bluesky Bot
 
 on:
   schedule:
-    # Run every 5 minutes
-    - cron: '*/5 * * * *'
+    # Run every 1 minute for maximum speed
+    - cron: '*/1 * * * *'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Bot Function
+      - name: Trigger Bot Function (First Check)
+        run: |
+          curl -X GET "https://bot.videoprivacy.org/.netlify/functions/bot"
+      - name: Wait 30 seconds
+        run: sleep 30
+      - name: Trigger Bot Function (Second Check)
         run: |
           curl -X GET "https://bot.videoprivacy.org/.netlify/functions/bot"
