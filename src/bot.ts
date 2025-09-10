@@ -178,29 +178,66 @@ export class BskyBot {
       
       console.log(`📍 Getting parent post: ${parentUri}`);
       
-      // Fetch the parent post
-      const parentResponse = await this.agent.getPost({
-        repo: parentUri.split('/')[2], // Extract the DID from the URI
-        rkey: parentUri.split('/').pop() // Extract the record key
+      // Fetch the parent post using the correct API
+      const parentResponse = await this.agent.app.bsky.feed.getPostThread({
+        uri: parentUri,
+        depth: 0
       });
       
-      if (parentResponse && parentResponse.value) {
-        const parentPost = parentResponse.value;
-        if (typeof parentPost === 'object' && 'text' in parentPost) {
-          const parentText = (parentPost as any).text;
-          console.log(`📝 Parent post text: ${parentText.substring(0, 200)}`);
+      console.log(`📡 Parent response type: ${typeof parentResponse}`);
+      
+      if (parentResponse && parentResponse.data && parentResponse.data.thread) {
+        const parentPost = parentResponse.data.thread.post as any;
+        console.log(`🔍 Parent post structure:`, JSON.stringify(parentPost, null, 2));
+        
+        // Get parent post text if it exists
+        let parentText = '';
+        if (parentPost && parentPost.record && parentPost.record.text) {
+          parentText = parentPost.record.text;
+          console.log(`📝 Parent post text: "${parentText}"`);
+        }
+        
+        // First try to find video URLs in the text
+        let videoInfo = URLUtils.extractVideoInfo(parentText);
+        
+        // If no video found in text, check for embed/card data
+        if (!videoInfo && parentPost.embed) {
+          const embed = parentPost.embed;
+          console.log(`🔗 Found embed data:`, JSON.stringify(embed, null, 2));
           
-          // Look for video URLs in the parent post
-          const videoInfo = URLUtils.extractVideoInfo(parentText);
-          
-          if (videoInfo) {
-            console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url}`);
-            // Reply to the comment with the privacy link
-            await this.replyWithPrivacyLink(commentPost, videoInfo);
-          } else {
-            console.log(`❌ No video URLs found in parent post`);
+          // Check if it's an external embed with a URI
+          if (embed.external && embed.external.uri) {
+            const embedUri = embed.external.uri;
+            console.log(`🌐 Found embed URI: ${embedUri}`);
+            videoInfo = URLUtils.extractVideoInfo(embedUri);
           }
         }
+        
+        // Also check for any URLs in facets (link annotations)
+        if (!videoInfo && parentPost.record && parentPost.record.facets) {
+          const facets = parentPost.record.facets;
+          console.log(`🔗 Found facets:`, JSON.stringify(facets, null, 2));
+          
+          for (const facet of facets || []) {
+            for (const feature of facet.features || []) {
+              if (feature.$type === 'app.bsky.richtext.facet#link' && feature.uri) {
+                console.log(`🌐 Found facet URI: ${feature.uri}`);
+                videoInfo = URLUtils.extractVideoInfo(feature.uri);
+                if (videoInfo) break;
+              }
+            }
+            if (videoInfo) break;
+          }
+        }
+        
+        if (videoInfo) {
+          console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url}`);
+          await this.replyWithPrivacyLink(commentPost, videoInfo);
+        } else {
+          console.log(`❌ No video URLs found in parent post (text, embed, or facets)`);
+        }
+      } else {
+        console.log(`❌ Could not retrieve parent post thread`);
       }
     } catch (error) {
       console.error(`❌ Error processing comment:`, error);
