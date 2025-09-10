@@ -294,15 +294,24 @@ export class BskyBot {
         console.log(`🎯 Replying to video post to appear in main thread: ${rootUri}`);
       }
       
-      // Try creating an external embed for better link card support
-      const embed = {
+      // Create external embed with thumbnail
+      let embed: any = {
         $type: 'app.bsky.embed.external',
         external: {
           uri: privacyUrl,
-          title: 'Privacy-friendly video link',
-          description: `Watch this ${videoInfo.platform} video without tracking`
+          title: `Privacy-friendly ${videoInfo.platform} link`,
+          description: `Watch this video without tracking or data collection`
         }
       };
+      
+      // Add thumbnail based on platform
+      if (videoInfo.platform === 'youtube') {
+        // Use YouTube's thumbnail API
+        embed.external.thumb = `https://img.youtube.com/vi/${videoInfo.id}/maxresdefault.jpg`;
+        console.log(`🖼️ Added YouTube thumbnail: ${embed.external.thumb}`);
+      }
+      
+      console.log(`📦 Embed structure:`, JSON.stringify(embed, null, 2));
       
       await this.agent.post({
         text: replyText,
