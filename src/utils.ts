@@ -18,9 +18,9 @@ export class URLUtils {
   static extractVideoInfo(text: string): VideoUrlInfo | null {
     // YouTube - Enhanced patterns to capture full URLs
     const youtubePatterns = [
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})(?:\S*)/,
-      /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{11})(?:\S*)/,
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})(?:\S*)/
+      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{4,})(?:\S*)/,
+      /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{4,})(?:\S*)/,
+      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{4,})(?:\S*)/
     ];
 
     for (const pattern of youtubePatterns) {
