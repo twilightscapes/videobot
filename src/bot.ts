@@ -197,13 +197,50 @@ export class BskyBot {
 
   private async processPost(post: any, text: string): Promise<void> {
     console.log(`🔍 Processing post for video URLs: ${text.substring(0, 200)}`);
-    const videoInfo = URLUtils.extractVideoInfo(text);
+    
+    // First, prioritize embed/card data (which has complete URLs)
+    let videoInfo = null;
+    
+    if (post.embed) {
+      const embed = post.embed;
+      console.log(`🔗 Found embed data:`, JSON.stringify(embed, null, 2));
+      
+      // Check if it's an external embed with a URI (this is where complete URLs live)
+      if (embed.external && embed.external.uri) {
+        const embedUri = embed.external.uri;
+        console.log(`🌐 Found embed URI: ${embedUri}`);
+        videoInfo = URLUtils.extractVideoInfo(embedUri);
+      }
+    }
+    
+    // If no video found in embed, check facets (link annotations)
+    if (!videoInfo && post.record && post.record.facets) {
+      const facets = post.record.facets;
+      console.log(`🔗 Found facets:`, JSON.stringify(facets, null, 2));
+      
+      for (const facet of facets || []) {
+        for (const feature of facet.features || []) {
+          if (feature.$type === 'app.bsky.richtext.facet#link' && feature.uri) {
+            console.log(`🌐 Found facet URI: ${feature.uri}`);
+            videoInfo = URLUtils.extractVideoInfo(feature.uri);
+            if (videoInfo) break;
+          }
+        }
+        if (videoInfo) break;
+      }
+    }
+    
+    // Only as a last resort, try extracting from text (which may be truncated)
+    if (!videoInfo) {
+      console.log(`🔤 No video found in embed/facets, trying text extraction (may be truncated)`);
+      videoInfo = URLUtils.extractVideoInfo(text);
+    }
     
     if (videoInfo) {
       console.log(`✅ Found ${videoInfo.platform} URL: ${videoInfo.url} (${videoInfo.type || 'video'})`);
       await this.replyWithPrivacyLink(post, videoInfo);
     } else {
-      console.log(`❌ No video URLs found in post`);
+      console.log(`❌ No video URLs found in post (embed, facets, or text)`);
     }
   }
 
