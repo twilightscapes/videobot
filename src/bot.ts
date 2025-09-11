@@ -12,6 +12,8 @@ export interface BotConfig {
 export class BskyBot {
   private agent: BskyAgent;
   private config: BotConfig;
+  private isProcessing: boolean = false;
+  private recentlyProcessed: Set<string> = new Set();
 
   constructor(config: BotConfig) {
     this.agent = new BskyAgent({
@@ -123,6 +125,14 @@ export class BskyBot {
   }
 
   private async checkTimeline(): Promise<void> {
+    // Prevent multiple simultaneous processing
+    if (this.isProcessing) {
+      console.log('⏳ Already processing, skipping this check cycle...');
+      return;
+    }
+
+    this.isProcessing = true;
+    
     try {
       // Try search first, but with better error handling
       console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
@@ -131,26 +141,22 @@ export class BskyBot {
       const response = await this.agent.app.bsky.feed.searchPosts({
         q: this.config.hashtag,
         limit: 25,
-        sort: 'latest' // Get the most recent posts
+        sort: 'latest'
       });
-
+      
       console.log(`📊 Found ${response.data.posts.length} posts with hashtag`);
-
-      // Filter posts to only include those from the last 24 hours to save resources
+      
+      // Filter to only recent posts (last 24 hours) to reduce processing load
       const maxAgeHours = 24;
-      const cutoffTime = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000);
+      const cutoffTime = new Date(Date.now() - (maxAgeHours * 60 * 60 * 1000));
+      console.log(`⏰ Filtering posts newer than: ${cutoffTime.toISOString()}`);
+      
       const recentPosts = response.data.posts.filter(post => {
-        const postDate = new Date(post.indexedAt);
-        const isRecent = postDate > cutoffTime;
-        if (!isRecent) {
-          console.log(`⏰ Skipping old post from ${postDate.toISOString()} (older than ${maxAgeHours} hours)`);
-        }
-        return isRecent;
+        const postDate = new Date((post.record as any).createdAt);
+        return postDate > cutoffTime;
       });
-
-      console.log(`📅 ${recentPosts.length} posts are from the last ${maxAgeHours} hours`);
-
-      let processedCount = 0;
+      
+      console.log(`📅 ${recentPosts.length} posts are from the last ${maxAgeHours} hours`);      let processedCount = 0;
       for (const post of recentPosts) {
         console.log(`\n🔄 === Processing Post ${processedCount + 1}/${recentPosts.length} ===`);
         console.log(`📍 Post URI: ${post.uri}`);
@@ -178,11 +184,27 @@ export class BskyBot {
             const targetPostUri = post.uri;
             console.log(`🎯 Checking if we've replied to: ${targetPostUri}`);
             
+            // Quick cache check first
+            if (this.recentlyProcessed.has(targetPostUri)) {
+              console.log(`⚡ SKIPPING post (recently processed in cache): ${targetPostUri}`);
+              continue;
+            }
+            
             const alreadyReplied = await this.hasAlreadyReplied(targetPostUri);
             console.log(`🤔 Already replied? ${alreadyReplied}`);
             
             if (!alreadyReplied) {
               console.log(`✅ Processing NEW post with hashtag: ${text.substring(0, 100)}...`);
+              
+              // Add to cache to prevent duplicate processing
+              this.recentlyProcessed.add(targetPostUri);
+              
+              // Clean cache if it gets too large (keep last 100 items)
+              if (this.recentlyProcessed.size > 100) {
+                const entries = Array.from(this.recentlyProcessed);
+                this.recentlyProcessed.clear();
+                entries.slice(-50).forEach(uri => this.recentlyProcessed.add(uri));
+              }
               
               // Check if this is a reply/comment
               if ((post.record as any).reply) {
@@ -221,7 +243,13 @@ export class BskyBot {
     } catch (error) {
       console.error('❌ Error searching for posts:', error);
       console.log('🔄 Falling back to timeline check...');
+      
+      // Add a small delay to prevent race conditions
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       await this.checkTimelineFallback();
+    } finally {
+      this.isProcessing = false;
     }
   }
 
@@ -239,9 +267,19 @@ export class BskyBot {
           
           // Check if post contains our hashtag and we haven't replied yet
           if (this.containsHashtag(text)) {
+            // Quick cache check first
+            if (this.recentlyProcessed.has(item.post.uri)) {
+              console.log(`⚡ SKIPPING post (recently processed in cache): ${item.post.uri}`);
+              continue;
+            }
+            
             const alreadyReplied = await this.hasAlreadyReplied(item.post.uri);
             if (!alreadyReplied) {
               console.log(`Found new post with hashtag: ${text.substring(0, 100)}...`);
+              
+              // Add to cache to prevent duplicate processing
+              this.recentlyProcessed.add(item.post.uri);
+              
               await this.processPost(item.post, text);
             }
           }
