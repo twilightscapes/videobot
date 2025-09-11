@@ -24,13 +24,17 @@ A bot for Bluesky that monitors posts with specific hashtags, extracts video URL
 
    ```
 
-### 3. **Set up Scheduled Function** (Optional)
-   You can trigger the bot manually via:
+### 3. **Set up Scheduled Function**
+   The bot runs as a Netlify Function that can be triggered via:
    ```
    https://your-site.netlify.app/.netlify/functions/bot
    ```
    
-   Or set up a cron job service like **EasyCron** or **GitHub Actions** to call this endpoint regularly.
+   Set up a cron job service like **cron-job.org** to call this endpoint every minute:
+   - Create account at https://cron-job.org
+   - Add new cron job with URL: `https://your-site.netlify.app/.netlify/functions/bot`
+   - Set schedule to `* * * * *` (every minute)
+   - Enable the job
 
 ## Local Development
 

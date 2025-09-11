@@ -130,11 +130,24 @@ export class BskyBot {
       });
 
       console.log(`📊 Found ${response.data.posts.length} posts with hashtag`);
-      console.log(`📊 Full search response:`, JSON.stringify(response.data, null, 2));
+
+      // Filter posts to only include those from the last 24 hours to save resources
+      const maxAgeHours = 24;
+      const cutoffTime = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000);
+      const recentPosts = response.data.posts.filter(post => {
+        const postDate = new Date(post.indexedAt);
+        const isRecent = postDate > cutoffTime;
+        if (!isRecent) {
+          console.log(`⏰ Skipping old post from ${postDate.toISOString()} (older than ${maxAgeHours} hours)`);
+        }
+        return isRecent;
+      });
+
+      console.log(`📅 ${recentPosts.length} posts are from the last ${maxAgeHours} hours`);
 
       let processedCount = 0;
-      for (const post of response.data.posts) {
-        console.log(`\n🔄 === Processing Post ${processedCount + 1}/${response.data.posts.length} ===`);
+      for (const post of recentPosts) {
+        console.log(`\n🔄 === Processing Post ${processedCount + 1}/${recentPosts.length} ===`);
         console.log(`📍 Post URI: ${post.uri}`);
         console.log(`👤 Post Author: ${post.author.handle} (${post.author.displayName})`);
         
@@ -198,7 +211,7 @@ export class BskyBot {
         }
       }
       
-      console.log(`🏁 SUMMARY: Processed ${processedCount} new posts out of ${response.data.posts.length} total`);
+      console.log(`🏁 SUMMARY: Processed ${processedCount} new posts out of ${recentPosts.length} recent posts (${response.data.posts.length} total found)`);
       
     } catch (error) {
       console.error('❌ Error searching for posts:', error);
