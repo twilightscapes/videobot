@@ -394,21 +394,23 @@ export class BskyBot {
         };
       }
       
-      // Create external embed with uploaded thumbnail
-      let embed: any = {
-        $type: 'app.bsky.embed.external',
-        external: {
-          uri: privacyUrl,
-          title: `Privacy-friendly ${videoInfo.platform} link`,
-          description: `Watch this video without tracking or data collection`
-        }
-      };
+      let embed: any = null;
       
-      // Try to upload thumbnail for YouTube videos
+      // Only create link cards for YouTube (which has reliable thumbnails)
       if (videoInfo.platform === 'youtube') {
+        embed = {
+          $type: 'app.bsky.embed.external',
+          external: {
+            uri: privacyUrl,
+            title: `Privacy-friendly YouTube link`,
+            description: `Watch this video without tracking or data collection`
+          }
+        };
+        
+        // Try to upload thumbnail for YouTube videos
         try {
           const thumbnailUrl = `https://img.youtube.com/vi/${videoInfo.id}/hqdefault.jpg`;
-          console.log(`🖼️ Fetching thumbnail: ${thumbnailUrl}`);
+          console.log(`🖼️ Fetching YouTube thumbnail: ${thumbnailUrl}`);
           
           const response = await fetch(thumbnailUrl);
           if (response.ok) {
@@ -418,21 +420,31 @@ export class BskyBot {
             });
             
             embed.external.thumb = blob.data.blob;
-            console.log(`✅ Uploaded thumbnail as blob`);
+            console.log(`✅ Uploaded YouTube thumbnail as blob`);
+          } else {
+            console.log(`⚠️ Failed to fetch YouTube thumbnail: ${response.status}`);
           }
         } catch (error) {
-          console.log(`❌ Failed to upload thumbnail, continuing without: ${error}`);
+          console.log(`❌ Failed to upload YouTube thumbnail, continuing without: ${error}`);
         }
+        
+        console.log(`📦 YouTube embed with card:`, JSON.stringify(embed, null, 2));
+      } else {
+        console.log(`📝 Text-only reply for ${videoInfo.platform} (no card)`);
       }
       
-      console.log(`📦 Embed structure:`, JSON.stringify(embed, null, 2));
-      
-      await this.agent.post({
+      const postData: any = {
         text: replyText,
         facets: facets,
-        embed: embed,
         reply: replyStructure
-      });
+      };
+      
+      // Only add embed if we have one (YouTube only)
+      if (embed) {
+        postData.embed = embed;
+      }
+      
+      await this.agent.post(postData);
       
       console.log(`✅ Successfully replied with privacy link: ${privacyUrl}`);
     } catch (error) {
