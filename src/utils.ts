@@ -142,7 +142,7 @@ export class URLUtils {
   /**
    * Generate privacy-friendly URL with video info or full URL
    */
-  static createPrivacyUrl(videoInfoOrUrl: VideoUrlInfo | string, privacyDomain: string): string {
+  static async createPrivacyUrl(videoInfoOrUrl: VideoUrlInfo | string, privacyDomain: string): Promise<string> {
     let videoInfo: VideoUrlInfo | null;
     
     if (typeof videoInfoOrUrl === 'string') {
@@ -154,17 +154,55 @@ export class URLUtils {
     }
     
     if (videoInfo) {
+      // For TikTok short URLs, resolve redirects to get the actual video URL
+      if (videoInfo.platform === 'tiktok' && (
+          videoInfo.url.includes('/t/') || 
+          videoInfo.url.includes('vm.tiktok.com')
+      )) {
+        try {
+          const resolvedUrl = await this.resolveRedirect(videoInfo.url);
+          if (resolvedUrl) {
+            // Extract video info from the resolved URL to get the proper video ID
+            const resolvedVideoInfo = this.extractVideoInfo(resolvedUrl);
+            if (resolvedVideoInfo) {
+              videoInfo = resolvedVideoInfo;
+            }
+          }
+        } catch (error) {
+          console.error('Failed to resolve TikTok redirect:', error);
+          // Fall back to original URL
+        }
+      }
+      
       // For YouTube, use just the video ID
       if (videoInfo.platform === 'youtube') {
         return `https://${privacyDomain}/video?video=${videoInfo.id}`;
       }
-      // For all other platforms (TikTok, Vimeo, etc.), use the full URL
+      // For all other platforms, use the full URL
       return `https://${privacyDomain}/video?video=${encodeURIComponent(videoInfo.url)}`;
     }
     
     // Fallback: if extraction fails and we have a string URL, use it directly
     const url = typeof videoInfoOrUrl === 'string' ? videoInfoOrUrl : '';
     return `https://${privacyDomain}/video?video=${encodeURIComponent(url)}`;
+  }
+
+  /**
+   * Resolve URL redirects to get the final destination URL
+   */
+  static async resolveRedirect(url: string): Promise<string | null> {
+    try {
+      const response = await fetch(url, {
+        method: 'HEAD',
+        redirect: 'follow'
+      });
+      
+      // Return the final URL after following redirects
+      return response.url;
+    } catch (error) {
+      console.error('Error resolving redirect:', error);
+      return null;
+    }
   }
 
   /**

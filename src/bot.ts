@@ -330,7 +330,7 @@ export class BskyBot {
   private async replyWithPrivacyLink(originalPost: any, videoInfo: VideoUrlInfo): Promise<void> {
     try {
       console.log(`🚀 Creating privacy link for ${videoInfo.platform} URL: ${videoInfo.url}`);
-      const privacyUrl = URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
+      const privacyUrl = await URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
       
       // Short prefix with URL on new line
       const replyText = `Privacy link:\n${privacyUrl}`;
