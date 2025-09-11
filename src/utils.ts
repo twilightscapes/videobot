@@ -54,18 +54,27 @@ export class URLUtils {
       };
     }
 
-    // TikTok
-    const tiktokMatch = text.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/.*\/video\/(\d+)(?:\S*)/);
-    if (tiktokMatch) {
-      let fullUrl = tiktokMatch[0];
-      if (!fullUrl.startsWith('http')) {
-        fullUrl = 'https://' + fullUrl;
+    // TikTok - Multiple patterns for different URL formats
+    const tiktokPatterns = [
+      /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/.*\/video\/(\d+)(?:\S*)/,           // Standard format
+      /(?:https?:\/\/)?vm\.tiktok\.com\/([a-zA-Z0-9]+)(?:\/)?(?:\S*)/,          // Short vm.tiktok.com
+      /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/t\/([a-zA-Z0-9]+)(?:\/)?(?:\S*)/,   // Short tiktok.com/t/
+      /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[\w.-]+\/video\/(\d+)(?:\S*)/     // @username format
+    ];
+
+    for (const pattern of tiktokPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        let fullUrl = match[0];
+        if (!fullUrl.startsWith('http')) {
+          fullUrl = 'https://' + fullUrl;
+        }
+        return {
+          url: fullUrl,
+          platform: 'tiktok',
+          id: match[1]
+        };
       }
-      return {
-        url: fullUrl,
-        platform: 'tiktok',
-        id: tiktokMatch[1]
-      };
     }
 
     // Twitch
@@ -131,16 +140,31 @@ export class URLUtils {
   }
 
   /**
-   * Generate privacy-friendly URL with just the video ID
+   * Generate privacy-friendly URL with video info or full URL
    */
-  static createPrivacyUrl(originalUrl: string, privacyDomain: string): string {
-    // Extract video info to get the ID
-    const videoInfo = this.extractVideoInfo(originalUrl);
-    if (videoInfo && videoInfo.platform === 'youtube') {
-      return `https://${privacyDomain}/video?video=${videoInfo.id}`;
+  static createPrivacyUrl(videoInfoOrUrl: VideoUrlInfo | string, privacyDomain: string): string {
+    let videoInfo: VideoUrlInfo | null;
+    
+    if (typeof videoInfoOrUrl === 'string') {
+      // If passed a string, extract video info from it
+      videoInfo = this.extractVideoInfo(videoInfoOrUrl);
+    } else {
+      // If passed a VideoUrlInfo object, use it directly
+      videoInfo = videoInfoOrUrl;
     }
-    // For non-YouTube or if extraction fails, fall back to full URL
-    return `https://${privacyDomain}/video?video=${encodeURIComponent(originalUrl)}`;
+    
+    if (videoInfo) {
+      // For YouTube, use just the video ID
+      if (videoInfo.platform === 'youtube') {
+        return `https://${privacyDomain}/video?video=${videoInfo.id}`;
+      }
+      // For all other platforms (TikTok, Vimeo, etc.), use the full URL
+      return `https://${privacyDomain}/video?video=${encodeURIComponent(videoInfo.url)}`;
+    }
+    
+    // Fallback: if extraction fails and we have a string URL, use it directly
+    const url = typeof videoInfoOrUrl === 'string' ? videoInfoOrUrl : '';
+    return `https://${privacyDomain}/video?video=${encodeURIComponent(url)}`;
   }
 
   /**
