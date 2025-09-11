@@ -20,6 +20,11 @@ export class BskyBot {
     this.config = config;
   }
 
+  private containsHashtag(text: string): boolean {
+    // Case-insensitive hashtag matching
+    return text.toLowerCase().includes(this.config.hashtag.toLowerCase());
+  }
+
   private async hasAlreadyReplied(postUri: string): Promise<boolean> {
     try {
       console.log(`🔍 Checking replies for: ${postUri}`);
@@ -157,7 +162,7 @@ export class BskyBot {
           
           console.log(`📝 Post text: "${text}"`);
           console.log(`� Post date: ${postDate.toISOString()}`);
-          console.log(`🏷️ Contains hashtag "${this.config.hashtag}": ${text.includes(this.config.hashtag)}`);
+          console.log(`🏷️ Contains hashtag "${this.config.hashtag}": ${this.containsHashtag(text)}`);
           
           // Log if this is a reply/comment
           if ((post.record as any).reply) {
@@ -168,7 +173,7 @@ export class BskyBot {
           }
           
           // Check if post contains our hashtag and we haven't already replied
-          if (text.includes(this.config.hashtag)) {
+          if (this.containsHashtag(text)) {
             // Always check if we've replied to THIS specific post (not parent)
             const targetPostUri = post.uri;
             console.log(`🎯 Checking if we've replied to: ${targetPostUri}`);
@@ -233,7 +238,7 @@ export class BskyBot {
           const text = item.post.record.text as string;
           
           // Check if post contains our hashtag and we haven't replied yet
-          if (text.includes(this.config.hashtag)) {
+          if (this.containsHashtag(text)) {
             const alreadyReplied = await this.hasAlreadyReplied(item.post.uri);
             if (!alreadyReplied) {
               console.log(`Found new post with hashtag: ${text.substring(0, 100)}...`);
