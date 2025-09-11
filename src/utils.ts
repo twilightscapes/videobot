@@ -107,6 +107,24 @@ export class URLUtils {
       };
     }
 
+    // Twitch channels (live streams) - Match channel URLs but exclude specific paths
+    const twitchChannelMatch = text.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([a-zA-Z0-9_]+)(?:\/[^\/]*)?(?:\S*)/);
+    if (twitchChannelMatch && !text.includes('/videos/') && !text.includes('/clip/') && !text.includes('/directory/') && !text.includes('/settings/') && !text.includes('/profile/')) {
+      let fullUrl = twitchChannelMatch[0];
+      if (!fullUrl.startsWith('http')) {
+        fullUrl = 'https://' + fullUrl;
+      }
+      // Clean up URL to just the channel path
+      const channelName = twitchChannelMatch[1];
+      const cleanUrl = `https://www.twitch.tv/${channelName}`;
+      return {
+        url: cleanUrl,
+        platform: 'twitch',
+        id: channelName,
+        type: 'channel'
+      };
+    }
+
     // Dailymotion
     const dailymotionMatch = text.match(/(?:https?:\/\/)?(?:www\.)?dailymotion\.com\/video\/([a-zA-Z0-9]+)(?:\S*)/);
     if (dailymotionMatch) {
