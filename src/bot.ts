@@ -376,7 +376,7 @@ export class BskyBot {
       const privacyUrl = await URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
       
       // Short prefix with URL on new line
-      const replyText = `Video Privacy Link You Requested:\n${privacyUrl}`;
+      const replyText = `The Video Privacy Link You Requested:\n${privacyUrl}`;
       
       console.log(`💬 Posting reply: ${replyText}`);
       console.log(`📍 Replying to: ${originalPost.uri}`);
@@ -445,8 +445,8 @@ export class BskyBot {
           $type: 'app.bsky.embed.external',
           external: {
             uri: privacyUrl,
-            title: `Video Privacy Secured Video Link`,
-            description: `Use Hashtag #VideoPrivacy to watch videos without tracking, data collection or ads`
+            title: `WATCH: This Video Privacy Video Link`,
+            description: `Use Hashtag #VideoPrivacy to watch without tracking, data collection or ads`
           }
         };
         
