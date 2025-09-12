@@ -445,7 +445,7 @@ export class BskyBot {
           $type: 'app.bsky.embed.external',
           external: {
             uri: privacyUrl,
-            title: `Video Privacy Secured YouTube Link`,
+            title: `Video Privacy Secured Video Link`,
             description: `Use Hashtag #VideoPrivacy to watch videos without tracking, data collection or ads`
           }
         };
