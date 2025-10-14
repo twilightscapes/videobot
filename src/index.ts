@@ -1,6 +1,7 @@
 import { BskyBot } from './bot';
 import dotenv from 'dotenv';
 
+// Load environment variables
 dotenv.config();
 
 async function main() {
@@ -11,7 +12,7 @@ async function main() {
     privacyDomain: process.env.PRIVACY_DOMAIN || 'your-domain.org'
   });
 
-  console.log('Starting Bluesky Video Privacy Bot...');
+  // console.log('Starting Bluesky YouTube Privacy Bot...');
   
   try {
     await bot.start();
@@ -21,8 +22,9 @@ async function main() {
   }
 }
 
+// Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\nShutting down bot...');
+  // console.log('\nShutting down bot...');
   process.exit(0);
 });
 

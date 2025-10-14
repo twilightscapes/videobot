@@ -1,21 +1,44 @@
-# Bluesky Video Privacy Bot
+# Bluesky YouTube Privacy Bot
 
 A bot for Bluesky that monitors posts with specific hashtags, extracts video URLs from multiple platforms, and replies with privacy-friendly alternatives using your video privacy service.
 
-## 🎯 Features
+## Features
 
-- **Multi-Platform Support**: YouTube, TikTok, Vimeo, Twitch, Dailymotion
-- **Hashtag Monitoring**: Automatically detects posts with specified hashtags
-- **Privacy Links**: Converts video URLs to privacy-friendly alternatives
-- **Smart Caching**: Prevents duplicate replies
-- **TypeScript**: Fully typed for better development experience
-- **Netlify-Ready**: Deploy as a serverless function
+- Monitors Bluesky timeline for posts containing specified hashtags
+- Supports multiple video platforms: **YouTube, TikTok, Vimeo, Twitch, Dailymotion**
+- Automatically detects video URLs in posts
+- Replies with privacy-friendly alternatives using your `/video?video=` URL format
+- Built with TypeScript and the AT Protocol
+- **Netlify-ready** for serverless deployment
 
-## 🚀 Quick Start
+## Deployment on Netlify
 
-### Local Development
+### 1. **Connect to Netlify**
+   - Push your code to GitHub/GitLab
+   - Connect the repository to Netlify
+   - Netlify will automatically detect the build settings from `netlify.toml`
 
-1. **Install dependencies**:
+### 2. **Configure Environment Variables**
+   In your Netlify dashboard, add these environment variables:
+   ```
+
+   ```
+
+### 3. **Set up Scheduled Function**
+   The bot runs as a Netlify Function that can be triggered via:
+   ```
+   https://your-site.netlify.app/.netlify/functions/bot
+   ```
+   
+   Set up a cron job service like **cron-job.org** to call this endpoint every minute:
+   - Create account at https://cron-job.org
+   - Add new cron job with URL: `https://your-site.netlify.app/.netlify/functions/bot`
+   - Set schedule to `* * * * *` (every minute)
+   - Enable the job
+
+## Local Development
+
+1. **Clone and install dependencies**:
    ```bash
    npm install
    ```
@@ -25,174 +48,68 @@ A bot for Bluesky that monitors posts with specific hashtags, extracts video URL
    cp .env.example .env
    ```
    
-   Edit `.env` with your credentials:
-   ```env
-   BLUESKY_HANDLE=your-bot.bsky.social
-   BLUESKY_PASSWORD=your-app-password
-   HASHTAG_TO_MONITOR=#videoprivacy
-   PRIVACY_DOMAIN=your-domain.org
+   Edit `.env` with your Bluesky credentials:
    ```
 
-3. **Run locally**:
+   ```
+
+3. **Development options**:
    ```bash
-   # Build and run
+   # Test locally with Node.js
    npm run build && npm start
    
-   # Development mode with auto-reload
-   npm run dev
-   
-   # Test with Netlify environment
+   # Test with Netlify dev environment
    npm run dev:netlify
+   
+   # Development with auto-reload
+   npm run dev
    ```
 
-## 🌐 Deployment on Netlify
+## How it works
 
-### Setup
+1. **Continuous Monitoring**: The bot checks the Bluesky timeline for new posts
+2. **Multi-Platform Detection**: When it finds a post with your hashtag containing video URLs from:
+   - **YouTube** (youtube.com, youtu.be, youtube.com/shorts)
+   - **TikTok** (tiktok.com)
+   - **Vimeo** (vimeo.com)
+   - **Twitch** (twitch.tv - videos, clips, channels)
+   - **Dailymotion** (dailymotion.com)
+3. **Privacy Link Generation**: Creates links using your `/video?video=` format
+4. **Automated Replies**: Posts replies with platform-specific emojis and privacy-friendly links
 
-1. **Push to Git** (GitHub/GitLab)
-2. **Connect to Netlify** (auto-detects build settings)
-3. **Add Environment Variables** in Netlify dashboard:
-   - `BLUESKY_HANDLE`
-   - `BLUESKY_PASSWORD`
-   - `HASHTAG_TO_MONITOR`
-   - `PRIVACY_DOMAIN`
-
-### Scheduled Function
-
-Set up a cron service (like [cron-job.org](https://cron-job.org)) to call:
+### Example Bot Reply:
 ```
-https://your-site.netlify.app/.netlify/functions/bot
+🔒 Here's a privacy-friendly youtube link: https://your-domain.org/video?video=https%3A//youtube.com/watch%3Fv%3DdQw4w9WgXcQ 📺
 ```
 
-Schedule: `* * * * *` (every minute)
+## Deployment Options
 
-## 📋 How It Works
+### **Option 1: Netlify (Recommended)**
+- Serverless deployment with scheduled functions
+- No server maintenance required
+- Free tier available
 
-1. **Monitors** Bluesky timeline for posts with your hashtag
-2. **Detects** video URLs from supported platforms:
-   - YouTube (youtube.com, youtu.be, /shorts)
-   - TikTok (all formats including short links)
-   - Vimeo
-   - Twitch (videos, clips, channels)
-   - Dailymotion
-3. **Generates** privacy-friendly links using your domain
-4. **Replies** automatically with the privacy link
+### **Option 2: Traditional Server**
+- VPS or dedicated server
+- Continuous monitoring (24/7)
+- Requires server management
 
-### Example Reply:
-```
-The Video Privacy Link You Requested:
-https://your-domain.org/video?video=https%3A//youtube.com/watch%3Fv%3DdQw4w9WgXcQ
-```
+## Configuration
 
-## 🛠️ Development
 
-### Available Scripts
 
-```bash
-npm run build          # Compile TypeScript
-npm start              # Run compiled version
-npm run dev            # Development mode
-npm run lint           # Check code quality
-npm run lint:fix       # Fix linting issues
-npm run format         # Format code with Prettier
-npm run test           # Run tests
-npm run clean          # Remove build artifacts
-```
+## Security Notes
 
-### Project Structure
+- Never commit your `.env` file with real credentials
+- Use app passwords, not your main account password
+- Consider rate limits when deploying
 
-```
-videobot/
-├── src/
-│   ├── bot.ts         # Main bot logic
-│   ├── index.ts       # Entry point
-│   └── utils.ts       # URL utilities
-├── tests/             # Test files
-├── netlify/
-│   └── functions/     # Netlify function handlers
-├── dist/              # Compiled output (gitignored)
-└── .env               # Local config (gitignored)
-```
+## Development
 
-## 🔧 Configuration
+- `npm run dev`: Start in development mode with ts-node
+- `npm run build`: Compile TypeScript to JavaScript
+- `npm start`: Run the compiled version
 
-### Environment Variables
+## License
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BLUESKY_HANDLE` | Your bot's Bluesky handle | Required |
-| `BLUESKY_PASSWORD` | App password (not main password) | Required |
-| `HASHTAG_TO_MONITOR` | Hashtag to monitor | `#videoprivacy` |
-| `PRIVACY_DOMAIN` | Your privacy service domain | `your-domain.org` |
-
-### Bot Settings
-
-Edit constants in `src/bot.ts`:
-- `CACHE_SIZE`: Processed posts cache size (default: 100)
-- `MAX_AGE_HOURS`: Maximum post age to process (default: 24)
-- `CHECK_INTERVAL_MS`: Polling interval (default: 30000)
-
-## 🔒 Security
-
-- ✅ Never commit `.env` files
-- ✅ Use app passwords, not main account password
-- ✅ Review rate limits before deploying
-- ✅ Keep dependencies updated
-
-## 📦 Supported Platforms
-
-### YouTube
-- Standard videos: `youtube.com/watch?v=`
-- Short links: `youtu.be/`
-- Shorts: `youtube.com/shorts/`
-
-### TikTok
-- Standard: `tiktok.com/@user/video/`
-- Short links: `vm.tiktok.com/` and `tiktok.com/t/`
-
-### Vimeo
-- All formats: `vimeo.com/[id]`
-
-### Twitch
-- Videos: `twitch.tv/videos/[id]`
-- Clips: `twitch.tv/[user]/clip/` or `clips.twitch.tv/`
-- Channels: `twitch.tv/[username]`
-
-### Dailymotion
-- Videos: `dailymotion.com/video/[id]`
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run `npm run lint` and `npm run format`
-5. Submit a pull request
-
-## 📝 License
-
-MIT License - see LICENSE file for details
-
-## 🐛 Troubleshooting
-
-### Bot not responding?
-- Check environment variables are set correctly
-- Verify bot account credentials
-- Check Netlify function logs
-- Ensure cron job is active
-
-### Rate limit errors?
-- Reduce `CHECK_INTERVAL_MS`
-- Lower search result `limit`
-- Check Bluesky API rate limits
-
-### Can't find posts?
-- Verify hashtag spelling (case-insensitive)
-- Check `MAX_AGE_HOURS` setting
-- Test with recent posts manually
-
-## 📚 Resources
-
-- [Bluesky AT Protocol Docs](https://atproto.com)
-- [Netlify Functions Guide](https://docs.netlify.com/functions/overview/)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+MIT
