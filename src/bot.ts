@@ -440,8 +440,14 @@ export class BskyBot {
       
       let embed: any = null;
       
-      // Only create link cards for YouTube (which has reliable thumbnails)
+      // Create link cards for all supported platforms
       if (videoInfo.platform === 'youtube') {
+        // Get YouTube thumbnail URL
+        const youtubeThumbnailUrl = `https://img.youtube.com/vi/${videoInfo.id}/maxresdefault.jpg`;
+        
+        // Get thumbnail with play icon overlay from videoprivacy.org API
+        const privacyThumbnailUrl = `${this.config.privacyDomain}/api/video?thumbnail=${encodeURIComponent(youtubeThumbnailUrl)}`;
+        
         embed = {
           $type: 'app.bsky.embed.external',
           external: {
@@ -451,12 +457,11 @@ export class BskyBot {
           }
         };
         
-        // Try to upload thumbnail for YouTube videos
+        // Try to upload thumbnail with play icon from videoprivacy.org
         try {
-          const thumbnailUrl = `https://img.youtube.com/vi/${videoInfo.id}/hqdefault.jpg`;
-          // console.log(`🖼️ Fetching YouTube thumbnail: ${thumbnailUrl}`);
+          // console.log(`🖼️ Fetching thumbnail with play icon: ${privacyThumbnailUrl}`);
           
-          const response = await fetch(thumbnailUrl);
+          const response = await fetch(privacyThumbnailUrl);
           if (response.ok) {
             const imageBuffer = await response.arrayBuffer();
             const blob = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
@@ -464,12 +469,22 @@ export class BskyBot {
             });
             
             embed.external.thumb = blob.data.blob;
-            // console.log(`✅ Uploaded YouTube thumbnail as blob`);
+            // console.log(`✅ Uploaded thumbnail with play icon as blob`);
           } else {
-            console.log(`⚠️ Failed to fetch YouTube thumbnail: ${response.status}`);
+            console.log(`⚠️ Failed to fetch thumbnail with play icon: ${response.status}, falling back to YouTube direct`);
+            
+            // Fallback to YouTube's thumbnail
+            const fallbackResponse = await fetch(youtubeThumbnailUrl);
+            if (fallbackResponse.ok) {
+              const imageBuffer = await fallbackResponse.arrayBuffer();
+              const blob = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
+                encoding: 'image/jpeg'
+              });
+              embed.external.thumb = blob.data.blob;
+            }
           }
         } catch (error) {
-          // console.log(`❌ Failed to upload YouTube thumbnail, continuing without: ${error}`);
+          // console.log(`❌ Failed to upload thumbnail, continuing without: ${error}`);
         }
         
         // console.log(`📦 YouTube embed with card:`, JSON.stringify(embed, null, 2));
