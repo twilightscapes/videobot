@@ -483,7 +483,7 @@ export class BskyBot {
         };
         
         // Get thumbnail with play icon overlay from videoprivacy.org API
-        const privacyThumbnailUrl = `${domain}/api/video?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
+        const privacyThumbnailUrl = `${domain}/api/og-video-image?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
         
         try {
           console.log(`🖼️ Fetching thumbnail with play icon: ${privacyThumbnailUrl}`);
@@ -509,6 +509,9 @@ export class BskyBot {
             console.log(`⚠️ Failed to fetch thumbnail with play icon: ${response.status}`);
             console.log(`⚠️ Error response: ${errorText}`);
             console.log(`⚠️ Falling back to YouTube direct`);
+          }
+        } catch (error) {
+          console.log(`❌ Failed to upload thumbnail: ${error}`);
             
             // Fallback to YouTube's thumbnail
             const fallbackResponse = await fetch(thumbnailUrl);
