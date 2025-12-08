@@ -442,8 +442,13 @@ export class BskyBot {
       
       // Create link cards for all supported platforms
       if (videoInfo.platform === 'youtube') {
+        // Ensure privacyDomain has protocol
+        const domain = this.config.privacyDomain.startsWith('http') 
+          ? this.config.privacyDomain 
+          : `https://${this.config.privacyDomain}`;
+        
         // Fetch video metadata from videoprivacy.org
-        const metadataUrl = `${this.config.privacyDomain}/api/metadata?videoId=${videoInfo.id}`;
+        const metadataUrl = `${domain}/api/metadata?videoId=${videoInfo.id}`;
         
         let title = 'WATCH: With Video Privacy';
         let description = 'Use Hashtag #VideoPrivacy to watch without tracking, data collection or ads';
@@ -477,7 +482,7 @@ export class BskyBot {
         };
         
         // Get thumbnail with play icon overlay from videoprivacy.org API
-        const privacyThumbnailUrl = `${this.config.privacyDomain}/api/video?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
+        const privacyThumbnailUrl = `${domain}/api/video?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
         
         try {
           console.log(`🖼️ Fetching thumbnail with play icon: ${privacyThumbnailUrl}`);
