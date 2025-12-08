@@ -452,6 +452,7 @@ export class BskyBot {
         
         let title = 'WATCH: With Video Privacy';
         let description = 'Use Hashtag #VideoPrivacy to watch without tracking, data collection or ads';
+        // Always use maxresdefault for highest quality
         let thumbnailUrl = `https://img.youtube.com/vi/${videoInfo.id}/maxresdefault.jpg`;
         
         try {
@@ -462,7 +463,7 @@ export class BskyBot {
             const metadata = await metadataResponse.json();
             title = metadata.title || title;
             description = metadata.description || description;
-            thumbnailUrl = metadata.thumbnail || thumbnailUrl;
+            // Don't use metadata.thumbnail - always use maxresdefault for better quality
             console.log(`✅ Got metadata - Title: ${title}`);
           } else {
             console.log(`⚠️ Failed to fetch metadata: ${metadataResponse.status}, using defaults`);
