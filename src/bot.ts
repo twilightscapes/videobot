@@ -509,9 +509,6 @@ export class BskyBot {
             console.log(`⚠️ Failed to fetch thumbnail with play icon: ${response.status}`);
             console.log(`⚠️ Error response: ${errorText}`);
             console.log(`⚠️ Falling back to YouTube direct`);
-          }
-        } catch (error) {
-          console.log(`❌ Failed to upload thumbnail: ${error}`);
             
             // Fallback to YouTube's thumbnail
             const fallbackResponse = await fetch(thumbnailUrl);
