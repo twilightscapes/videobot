@@ -490,7 +490,6 @@ export class BskyBot {
           
           const response = await fetch(privacyThumbnailUrl);
           console.log(`📥 Thumbnail response status: ${response.status}`);
-          console.log(`📥 Thumbnail response headers:`, Object.fromEntries(response.headers.entries()));
           
           if (response.ok) {
             const contentType = response.headers.get('content-type');
