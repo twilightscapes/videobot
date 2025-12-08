@@ -489,8 +489,12 @@ export class BskyBot {
           
           const response = await fetch(privacyThumbnailUrl);
           console.log(`📥 Thumbnail response status: ${response.status}`);
+          console.log(`📥 Thumbnail response headers:`, Object.fromEntries(response.headers.entries()));
           
           if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            console.log(`📄 Content-Type: ${contentType}`);
+            
             const imageBuffer = await response.arrayBuffer();
             console.log(`📦 Image buffer size: ${imageBuffer.byteLength} bytes`);
             
@@ -499,9 +503,12 @@ export class BskyBot {
             });
             
             embed.external.thumb = blob.data.blob;
-            console.log(`✅ Uploaded thumbnail with play icon as blob`);
+            console.log(`✅ Uploaded thumbnail with play icon as blob:`, JSON.stringify(blob.data.blob));
           } else {
-            console.log(`⚠️ Failed to fetch thumbnail with play icon: ${response.status}, falling back to YouTube direct`);
+            const errorText = await response.text();
+            console.log(`⚠️ Failed to fetch thumbnail with play icon: ${response.status}`);
+            console.log(`⚠️ Error response: ${errorText}`);
+            console.log(`⚠️ Falling back to YouTube direct`);
             
             // Fallback to YouTube's thumbnail
             const fallbackResponse = await fetch(thumbnailUrl);
