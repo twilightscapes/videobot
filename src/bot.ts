@@ -442,52 +442,74 @@ export class BskyBot {
       
       // Create link cards for all supported platforms
       if (videoInfo.platform === 'youtube') {
-        // Get YouTube thumbnail URL
-        const youtubeThumbnailUrl = `https://img.youtube.com/vi/${videoInfo.id}/maxresdefault.jpg`;
+        // Fetch video metadata from videoprivacy.org
+        const metadataUrl = `${this.config.privacyDomain}/api/metadata?videoId=${videoInfo.id}`;
         
-        // Get thumbnail with play icon overlay from videoprivacy.org API
-        const privacyThumbnailUrl = `${this.config.privacyDomain}/api/video?thumbnail=${encodeURIComponent(youtubeThumbnailUrl)}`;
-        
-        embed = {
-          $type: 'app.bsky.embed.external',
-          external: {
-            uri: privacyUrl,
-            title: `WATCH: With Video Privacy`,
-            description: `Use Hashtag #VideoPrivacy to watch without tracking, data collection or ads`
-          }
-        };
-        
-        // Try to upload thumbnail with play icon from videoprivacy.org
         try {
-          // console.log(`🖼️ Fetching thumbnail with play icon: ${privacyThumbnailUrl}`);
+          // console.log(`📡 Fetching video metadata: ${metadataUrl}`);
+          const metadataResponse = await fetch(metadataUrl);
           
-          const response = await fetch(privacyThumbnailUrl);
-          if (response.ok) {
-            const imageBuffer = await response.arrayBuffer();
-            const blob = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
-              encoding: 'image/jpeg'
-            });
-            
-            embed.external.thumb = blob.data.blob;
-            // console.log(`✅ Uploaded thumbnail with play icon as blob`);
+          let title = 'WATCH: With Video Privacy';
+          let description = 'Use Hashtag #VideoPrivacy to watch without tracking, data collection or ads';
+          let thumbnailUrl = `https://img.youtube.com/vi/${videoInfo.id}/maxresdefault.jpg`;
+          
+          if (metadataResponse.ok) {
+            const metadata = await metadataResponse.json();
+            title = metadata.title || title;
+            description = metadata.description || description;
+            thumbnailUrl = metadata.thumbnail || thumbnailUrl;
+            // console.log(`✅ Got metadata - Title: ${title}`);
           } else {
-            console.log(`⚠️ Failed to fetch thumbnail with play icon: ${response.status}, falling back to YouTube direct`);
+            console.log(`⚠️ Failed to fetch metadata: ${metadataResponse.status}, using defaults`);
+          }
+          
+          // Get thumbnail with play icon overlay from videoprivacy.org API
+          const privacyThumbnailUrl = `${this.config.privacyDomain}/api/video?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
+          
+          embed = {
+            $type: 'app.bsky.embed.external',
+            external: {
+              uri: privacyUrl,
+              title: title,
+              description: description
+            }
+          };
+          
+          // Try to upload thumbnail with play icon from videoprivacy.org
+          try {
+            // console.log(`🖼️ Fetching thumbnail with play icon: ${privacyThumbnailUrl}`);
             
-            // Fallback to YouTube's thumbnail
-            const fallbackResponse = await fetch(youtubeThumbnailUrl);
-            if (fallbackResponse.ok) {
-              const imageBuffer = await fallbackResponse.arrayBuffer();
+            const response = await fetch(privacyThumbnailUrl);
+            if (response.ok) {
+              const imageBuffer = await response.arrayBuffer();
               const blob = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
                 encoding: 'image/jpeg'
               });
+              
               embed.external.thumb = blob.data.blob;
+              // console.log(`✅ Uploaded thumbnail with play icon as blob`);
+            } else {
+              console.log(`⚠️ Failed to fetch thumbnail with play icon: ${response.status}, falling back to YouTube direct`);
+              
+              // Fallback to YouTube's thumbnail
+              const fallbackResponse = await fetch(thumbnailUrl);
+              if (fallbackResponse.ok) {
+                const imageBuffer = await fallbackResponse.arrayBuffer();
+                const blob = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
+                  encoding: 'image/jpeg'
+                });
+                embed.external.thumb = blob.data.blob;
+              }
             }
+          } catch (error) {
+            // console.log(`❌ Failed to upload thumbnail, continuing without: ${error}`);
           }
+          
+          // console.log(`📦 YouTube embed with card:`, JSON.stringify(embed, null, 2));
         } catch (error) {
-          // console.log(`❌ Failed to upload thumbnail, continuing without: ${error}`);
+          console.log(`❌ Error fetching metadata: ${error}`);
+          // Continue without metadata
         }
-        
-        // console.log(`📦 YouTube embed with card:`, JSON.stringify(embed, null, 2));
       } else {
         // console.log(`📝 Text-only reply for ${videoInfo.platform} (no card)`);
       }
