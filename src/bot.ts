@@ -159,6 +159,12 @@ export class BskyBot {
       // console.log(`📅 ${recentPosts.length} posts are from the last ${maxAgeHours} hours`);      
       let processedCount = 0;
       for (const post of recentPosts) {
+        // Skip posts from the bot's own account to prevent replying to itself
+        if (post.author.handle === this.config.handle) {
+          // console.log(`⏭️ SKIPPING post from bot's own account: ${post.uri}`);
+          continue;
+        }
+        
         // console.log(`\n🔄 === Processing Post ${processedCount + 1}/${recentPosts.length} ===`);
         // console.log(`📍 Post URI: ${post.uri}`);
         // console.log(`👤 Post Author: ${post.author.handle} (${post.author.displayName})`);
@@ -263,6 +269,11 @@ export class BskyBot {
       });
 
       for (const item of response.data.feed) {
+        // Skip posts from the bot's own account to prevent replying to itself
+        if (item.post.author.handle === this.config.handle) {
+          continue;
+        }
+        
         if (item.post.record && typeof item.post.record === 'object' && 'text' in item.post.record) {
           const text = item.post.record.text as string;
           
@@ -377,7 +388,7 @@ export class BskyBot {
       const privacyUrl = await URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
       
       // Short prefix with URL on new line
-      const replyText = `The Video Privacy Link You Requested:\n${privacyUrl}\nPost the hashtag # VideoPrivacy on any post containing a YouTube video to have an ad-free version provided.`;
+      const replyText = `The Video Privacy Link You Requested:\n${privacyUrl}\nPost the hashtag #VideoPrivacy on any post containing a YouTube video to have an ad-free version provided.`;
       
       console.log(`💬 Posting reply: ${replyText}`);
       console.log(`📍 Replying to: ${originalPost.uri}`);
