@@ -136,9 +136,19 @@ export class BskyBot {
     try {
       // Try search first, but with better error handling
       // Remove # from hashtag for search (Bluesky search doesn't need it)
-      const searchQuery = this.config.hashtag.replace('#', '');
+      // Try common capitalizations since Bluesky search may be case-sensitive
+      const baseHashtag = this.config.hashtag.replace('#', '');
+      const searchVariations = [
+        baseHashtag,
+        baseHashtag.toLowerCase(),
+        'VideoPrivacy',  // Common capitalization
+        'videoprivacy'   // All lowercase
+      ];
+      
+      // Use the most common variation for search
+      const searchQuery = 'VideoPrivacy';
       console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
-      console.log(`🔍 Search query: "${searchQuery}"`);
+      console.log(`🔍 Search query: "${searchQuery}" (trying VideoPrivacy capitalization)`);
       
       const response = await this.agent.app.bsky.feed.searchPosts({
         q: searchQuery,
@@ -282,12 +292,21 @@ export class BskyBot {
       
       console.log(`\ud83d\udcec Found ${notifications.data.notifications.length} recent notifications`);
       
+      let notifProcessed = 0;
       for (const notif of notifications.data.notifications) {
-        // Look for replies and mentions that might contain our hashtag
+        // Process ALL replies and mentions (not just ones with hashtag)
+        // This allows users to mention the bot directly or reply to bot posts
         if ((notif.reason === 'reply' || notif.reason === 'mention') && notif.record) {
           const record = notif.record as any;
-          if (record.text && this.containsHashtag(record.text)) {
-            console.log(`\ud83d\udd14 Found hashtag in notification from ${notif.author.handle}`);
+          const text = record.text || '';
+          
+          // Accept if it has the hashtag OR is a mention/reply (for direct interaction)
+          const hasHashtag = this.containsHashtag(text);
+          const isMention = notif.reason === 'mention';
+          
+          if (hasHashtag || isMention) {
+            console.log(`🔔 Found ${notif.reason} from ${notif.author.handle}: "${text.substring(0, 100)}" (hashtag: ${hasHashtag}, mention: ${isMention})`);
+            notifProcessed++;
             
             // Get the full post
             try {
@@ -323,8 +342,8 @@ export class BskyBot {
             }
           }
         }
-      }
-    } catch (error) {
+      }      
+      console.log(`🔔 Processed ${notifProcessed} notifications with hashtag`);    } catch (error) {
       console.error(`\u274c Error checking notifications:`, error);
     }
   }
@@ -372,23 +391,23 @@ export class BskyBot {
   }
 
   private async processPost(post: any, text: string): Promise<void> {
-    // console.log(`🔍 Processing post for video URLs: ${text.substring(0, 200)}`);
+    console.log(`🔍 Processing post for video URLs: ${text.substring(0, 200)}`);
 
     // Only use embed/card data (never truncated) - NO FALLBACKS TO PREVENT BAD LINKS
     let videoInfo = null;
     if (post.embed && post.embed.external && post.embed.external.uri) {
       const embedUri = post.embed.external.uri;
-      // console.log(`🌐 Using embed.external.uri for video: ${embedUri}`);
+      console.log(`🌐 Using embed.external.uri for video: ${embedUri}`);
       videoInfo = URLUtils.extractVideoInfo(embedUri);
       
       if (videoInfo && videoInfo.url) {
-        // console.log(`✅ Found ${videoInfo.platform} URL: ${videoInfo.url} (${videoInfo.type || 'video'})`);
+        console.log(`✅ Found ${videoInfo.platform} URL: ${videoInfo.url} (${videoInfo.type || 'video'})`);
         await this.replyWithPrivacyLink(post, videoInfo);
       } else {
-        // console.log(`❌ Embed URI is not a supported video platform: ${embedUri}`);
+        console.log(`❌ Embed URI is not a supported video platform: ${embedUri}`);
       }
     } else {
-      // console.log(`❌ No embed/external/uri found - skipping post (no fallbacks allowed to prevent bad links)`);
+      console.log(`❌ No embed/external/uri found - skipping post (no video to convert)`);
     }
   }
 
