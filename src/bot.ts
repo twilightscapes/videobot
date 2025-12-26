@@ -146,10 +146,18 @@ export class BskyBot {
       
       console.log(`📊 Found ${response.data.posts.length} posts with hashtag`);
       
-      // Filter to only recent posts (last 24 hours) to reduce processing load
-      const maxAgeHours = 24;
+      // Filter to only recent posts (last 72 hours) to reduce processing load
+      const maxAgeHours = 72;
       const cutoffTime = new Date(Date.now() - (maxAgeHours * 60 * 60 * 1000));
       console.log(`⏰ Filtering posts newer than: ${cutoffTime.toISOString()}`);
+      
+      // Log the age of the first few posts to see what we're getting
+      console.log(`\n📅 Sample of post ages:`);
+      response.data.posts.slice(0, 5).forEach((post, i) => {
+        const postDate = new Date((post.record as any).createdAt);
+        const ageHours = (Date.now() - postDate.getTime()) / (1000 * 60 * 60);
+        console.log(`  ${i + 1}. ${ageHours.toFixed(1)} hours old - ${postDate.toISOString()}`);
+      });
       
       const recentPosts = response.data.posts.filter(post => {
         const postDate = new Date((post.record as any).createdAt);
