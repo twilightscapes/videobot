@@ -16,6 +16,8 @@ class FirehoseBot {
   private agent: BskyAgent;
   private config: BotConfig;
   private processedPosts = new Set<string>();
+  private lastReplyTime = 0;
+  private minDelayBetweenReplies = 10000; // 10 seconds between replies
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -188,11 +190,23 @@ class FirehoseBot {
     
     console.log(`   🎬 YouTube video ID: ${videoId}`);
     
+    // Rate limiting: wait between replies to avoid spam detection
+    const now = Date.now();
+    const timeSinceLastReply = now - this.lastReplyTime;
+    if (timeSinceLastReply < this.minDelayBetweenReplies) {
+      const waitTime = this.minDelayBetweenReplies - timeSinceLastReply;
+      console.log(`   ⏱️  Rate limiting: waiting ${Math.round(waitTime / 1000)}s before replying...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
     // Create privacy link
     const privacyUrl = `https://videoprivacy.org/video?video=${videoId}`;
     
     // Reply with privacy link
     await this.replyWithPrivacyLink(postUri, privacyUrl, videoId);
+    
+    // Update last reply time
+    this.lastReplyTime = Date.now();
   }
 
   private isYouTubeUrl(url: string): boolean {
