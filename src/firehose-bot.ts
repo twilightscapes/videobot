@@ -91,6 +91,9 @@ class FirehoseBot {
 
     jetstream.start();
     console.log('🚀 Firehose bot started, monitoring for posts...');
+    
+    // Keep process alive
+    process.stdin.resume();
   }
 
   private async hasAlreadyReplied(postUri: string): Promise<boolean> {
