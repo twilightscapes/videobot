@@ -325,17 +325,23 @@ export class BskyBot {
                 
                 // Process it
                 const alreadyReplied = await this.hasAlreadyReplied(post.uri);
+                console.log(`🔍 Checking if already replied to ${post.uri}: ${alreadyReplied}`);
+                
                 if (!alreadyReplied) {
                   console.log(`\u2705 Processing notification post with hashtag`);
                   this.recentlyProcessed.add(post.uri);
                   
                   if (record.reply) {
+                    console.log(`💬 This is a comment notification, calling processComment`);
                     await this.processComment(post, record.text);
                     notifProcessed++;
                   } else {
+                    console.log(`📄 This is a post notification, calling processPost`);
                     await this.processPost(post, record.text);
                     notifProcessed++;
                   }
+                } else {
+                  console.log(`⏭️ Skipping notification - already replied to this post`);
                 }
               }
             } catch (error) {
