@@ -95,15 +95,33 @@ class FirehoseBot {
         // Mark as processed
         this.processedPosts.add(postUri);
         
-        // Check if already replied
-        const alreadyReplied = await this.hasAlreadyReplied(postUri);
+        // If this is a reply to another post, we should check the parent for the video
+        let targetPost = post;
+        let targetPostUri = postUri;
+        
+        if (post.reply?.parent?.uri) {
+          console.log('   📝 This is a reply, fetching parent post...');
+          try {
+            const parentThread = await this.agent.getPostThread({ uri: post.reply.parent.uri });
+            if ('post' in parentThread.data.thread) {
+              targetPost = (parentThread.data.thread as any).post.record;
+              targetPostUri = post.reply.parent.uri;
+              console.log(`   👆 Parent post URI: ${targetPostUri}`);
+            }
+          } catch (error) {
+            console.log('   ⚠️  Could not fetch parent post, using current post');
+          }
+        }
+        
+        // Check if already replied to the target post
+        const alreadyReplied = await this.hasAlreadyReplied(targetPostUri);
         if (alreadyReplied) {
           console.log('   ⏭️  Already replied, skipping');
           return;
         }
         
-        // Process the post
-        await this.processPost(event.did, post, postUri);
+        // Process the target post (either original or parent)
+        await this.processPost(targetPostUri, targetPost);
         
       } catch (error) {
         console.error('Error processing post:', error);
@@ -145,7 +163,7 @@ class FirehoseBot {
     }
   }
 
-  private async processPost(authorDid: string, post: any, postUri: string) {
+  private async processPost(postUri: string, post: any) {
     // Extract video URL from embed
     let videoUrl: string | null = null;
     
@@ -176,7 +194,7 @@ class FirehoseBot {
     const privacyUrl = `https://videoprivacy.org/video?video=${videoId}`;
     
     // Reply with privacy link
-    await this.replyWithPrivacyLink(postUri, authorDid, privacyUrl, videoId);
+    await this.replyWithPrivacyLink(postUri, privacyUrl, videoId);
   }
 
   private isYouTubeUrl(url: string): boolean {
@@ -197,7 +215,7 @@ class FirehoseBot {
     return null;
   }
 
-  private async replyWithPrivacyLink(postUri: string, authorDid: string, privacyUrl: string, videoId: string) {
+  private async replyWithPrivacyLink(postUri: string, privacyUrl: string, videoId: string) {
     try {
       console.log(`   💬 Creating reply with privacy link...`);
       
