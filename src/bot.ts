@@ -306,7 +306,6 @@ export class BskyBot {
           
           if (hasHashtag || isMention) {
             console.log(`🔔 Found ${notif.reason} from ${notif.author.handle}: "${text.substring(0, 100)}" (hashtag: ${hasHashtag}, mention: ${isMention})`);
-            notifProcessed++;
             
             // Get the full post
             try {
@@ -332,8 +331,10 @@ export class BskyBot {
                   
                   if (record.reply) {
                     await this.processComment(post, record.text);
+                    notifProcessed++;
                   } else {
                     await this.processPost(post, record.text);
+                    notifProcessed++;
                   }
                 }
               }
