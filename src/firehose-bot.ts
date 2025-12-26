@@ -113,25 +113,22 @@ class FirehoseBot {
     jetstream.start();
     console.log('🚀 Firehose bot started, monitoring for posts...');
     
-    // Keep process alive and handle graceful shutdown
-    const keepAlive = setInterval(() => {
-      // Just keep the process running
-    }, 1000 * 60); // Check every minute
-    
     // Handle shutdown signals
     process.on('SIGTERM', () => {
       console.log('Received SIGTERM, shutting down gracefully...');
-      clearInterval(keepAlive);
       jetstream.close();
       process.exit(0);
     });
     
     process.on('SIGINT', () => {
       console.log('Received SIGINT, shutting down gracefully...');
-      clearInterval(keepAlive);
       jetstream.close();
       process.exit(0);
     });
+    
+    // Keep the process alive indefinitely
+    // This prevents the start() method from returning
+    await new Promise(() => {});
   }
 
   private async hasAlreadyReplied(postUri: string): Promise<boolean> {
