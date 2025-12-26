@@ -135,12 +135,14 @@ export class BskyBot {
     
     try {
       // Try search first, but with better error handling
+      // Remove # from hashtag for search (Bluesky search doesn't need it)
+      const searchQuery = this.config.hashtag.replace('#', '');
       console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
-      console.log(`🔍 Search query: "${this.config.hashtag}"`);
+      console.log(`🔍 Search query: "${searchQuery}"`);
       
       const response = await this.agent.app.bsky.feed.searchPosts({
-        q: this.config.hashtag,
-        limit: 25,
+        q: searchQuery,
+        limit: 100,
         sort: 'latest'
       });
       
@@ -255,6 +257,10 @@ export class BskyBot {
       
       console.log(`🏁 SUMMARY: Processed ${processedCount} new posts out of ${recentPosts.length} recent posts (${response.data.posts.length} total found)`);
       
+      // Also check notifications for recent mentions that might not be indexed in search yet
+      console.log(`\n🔔 Checking notifications for recent mentions...`);
+      await this.checkNotifications();
+      
     } catch (error) {
       // console.error('❌ Error searching for posts:', error);
       // console.log('🔄 Falling back to timeline check...');
@@ -265,6 +271,61 @@ export class BskyBot {
       await this.checkTimelineFallback();
     } finally {
       this.isProcessing = false;
+    }
+  }
+
+  private async checkNotifications(): Promise<void> {
+    try {
+      const notifications = await this.agent.listNotifications({
+        limit: 50
+      });
+      
+      console.log(`\ud83d\udcec Found ${notifications.data.notifications.length} recent notifications`);
+      
+      for (const notif of notifications.data.notifications) {
+        // Look for replies and mentions that might contain our hashtag
+        if ((notif.reason === 'reply' || notif.reason === 'mention') && notif.record) {
+          const record = notif.record as any;
+          if (record.text && this.containsHashtag(record.text)) {
+            console.log(`\ud83d\udd14 Found hashtag in notification from ${notif.author.handle}`);
+            
+            // Get the full post
+            try {
+              const postThread = await this.agent.app.bsky.feed.getPostThread({
+                uri: notif.uri,
+                depth: 1
+              });
+              
+              if (postThread.data.thread && 'post' in postThread.data.thread) {
+                const post = (postThread.data.thread as any).post;
+                
+                // Skip if already processed
+                if (this.recentlyProcessed.has(post.uri)) {
+                  console.log(`\u23e9 Already processed this notification post`);
+                  continue;
+                }
+                
+                // Process it
+                const alreadyReplied = await this.hasAlreadyReplied(post.uri);
+                if (!alreadyReplied) {
+                  console.log(`\u2705 Processing notification post with hashtag`);
+                  this.recentlyProcessed.add(post.uri);
+                  
+                  if (record.reply) {
+                    await this.processComment(post, record.text);
+                  } else {
+                    await this.processPost(post, record.text);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error(`\u274c Error processing notification:`, error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`\u274c Error checking notifications:`, error);
     }
   }
 
