@@ -232,11 +232,7 @@ class FirehoseBot {
       console.log(`   💬 Creating reply with privacy link...`);
       console.log(`   📍 Reply target: ${postUri}`);
       
-      // Get the post we're replying to
-      const postCid = await this.getPostCid(postUri);
-      console.log(`   🔑 Post CID: ${postCid}`);
-      
-      // Get the thread to find the root
+      // Get the post thread (contains both the post and its context)
       const thread = await this.agent.getPostThread({ uri: postUri });
       const post = 'post' in thread.data.thread ? (thread.data.thread as any).post : null;
       
@@ -245,11 +241,15 @@ class FirehoseBot {
         return;
       }
       
+      const postCid = post.cid;
+      console.log(`   🔑 Post CID: ${postCid}`);
+      
       // Determine root - if the post we're replying to has a reply.root, use that, otherwise use the post itself
       const rootUri = post.record?.reply?.root?.uri || postUri;
       const rootCid = post.record?.reply?.root?.cid || postCid;
       
       console.log(`   🌳 Root URI: ${rootUri}`);
+      console.log(`   🌳 Root CID: ${rootCid}`);
       
       // Fetch video metadata
       const metadata = await this.fetchVideoMetadata(videoId);
