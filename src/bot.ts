@@ -135,8 +135,8 @@ export class BskyBot {
     
     try {
       // Try search first, but with better error handling
-      // console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
-      // console.log(`🔍 Search query: "${this.config.hashtag}"`);
+      console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
+      console.log(`🔍 Search query: "${this.config.hashtag}"`);
       
       const response = await this.agent.app.bsky.feed.searchPosts({
         q: this.config.hashtag,
@@ -144,45 +144,45 @@ export class BskyBot {
         sort: 'latest'
       });
       
-      // console.log(`📊 Found ${response.data.posts.length} posts with hashtag`);
+      console.log(`📊 Found ${response.data.posts.length} posts with hashtag`);
       
       // Filter to only recent posts (last 24 hours) to reduce processing load
       const maxAgeHours = 24;
       const cutoffTime = new Date(Date.now() - (maxAgeHours * 60 * 60 * 1000));
-      // console.log(`⏰ Filtering posts newer than: ${cutoffTime.toISOString()}`);
+      console.log(`⏰ Filtering posts newer than: ${cutoffTime.toISOString()}`);
       
       const recentPosts = response.data.posts.filter(post => {
         const postDate = new Date((post.record as any).createdAt);
         return postDate > cutoffTime;
       });
       
-      // console.log(`📅 ${recentPosts.length} posts are from the last ${maxAgeHours} hours`);      
+      console.log(`📅 ${recentPosts.length} posts are from the last ${maxAgeHours} hours`);      
       let processedCount = 0;
       for (const post of recentPosts) {
         // Skip posts from the bot's own account to prevent replying to itself
         if (post.author.handle === this.config.handle) {
-          // console.log(`⏭️ SKIPPING post from bot's own account: ${post.uri}`);
+          console.log(`⏭️ SKIPPING post from bot's own account: ${post.uri}`);
           continue;
         }
         
-        // console.log(`\n🔄 === Processing Post ${processedCount + 1}/${recentPosts.length} ===`);
-        // console.log(`📍 Post URI: ${post.uri}`);
-        // console.log(`👤 Post Author: ${post.author.handle} (${post.author.displayName})`);
+        console.log(`\n🔄 === Processing Post ${processedCount + 1}/${recentPosts.length} ===`);
+        console.log(`📍 Post URI: ${post.uri}`);
+        console.log(`👤 Post Author: ${post.author.handle} (${post.author.displayName})`);
         
         if (post.record && typeof post.record === 'object' && 'text' in post.record) {
           const text = post.record.text as string;
           const postDate = new Date((post.record as any).createdAt);
           
-          // console.log(`📝 Post text: "${text}"`);
-          // console.log(`� Post date: ${postDate.toISOString()}`);
-          // console.log(`🏷️ Contains hashtag "${this.config.hashtag}": ${this.containsHashtag(text)}`);
+          console.log(`📝 Post text: "${text}"`);
+          console.log(`📅 Post date: ${postDate.toISOString()}`);
+          console.log(`🏷️ Contains hashtag "${this.config.hashtag}": ${this.containsHashtag(text)}`);
           
           // Log if this is a reply/comment
           if ((post.record as any).reply) {
             const replyInfo = (post.record as any).reply;
-            // console.log(`� This is a COMMENT replying to: ${replyInfo.parent?.uri || replyInfo.root?.uri}`);
+            console.log(`💬 This is a COMMENT replying to: ${replyInfo.parent?.uri || replyInfo.root?.uri}`);
           } else {
-            // console.log(`📄 This is a REGULAR POST (not a comment)`);
+            console.log(`📄 This is a REGULAR POST (not a comment)`);
           }
           
           // Check if post contains our hashtag and we haven't already replied
@@ -198,10 +198,10 @@ export class BskyBot {
             }
             
             const alreadyReplied = await this.hasAlreadyReplied(targetPostUri);
-            // console.log(`🤔 Already replied? ${alreadyReplied}`);
+            console.log(`🤔 Already replied? ${alreadyReplied}`);
             
             if (!alreadyReplied) {
-              // console.log(`✅ Processing NEW post with hashtag: ${text.substring(0, 100)}...`);
+              console.log(`✅ Processing NEW post with hashtag: ${text.substring(0, 100)}...`);
               
               // Add to cache to prevent duplicate processing
               this.recentlyProcessed.add(targetPostUri);
@@ -215,37 +215,37 @@ export class BskyBot {
               
               // Check if this is a reply/comment
               if ((post.record as any).reply) {
-                // console.log(`🔄 Calling processComment...`);
+                console.log(`🔄 Calling processComment...`);
                 try {
                   await this.processComment(post, text);
-                  // console.log(`✅ processComment completed successfully`);
+                  console.log(`✅ processComment completed successfully`);
                 } catch (error) {
-                  // console.error(`❌ Error in processComment:`, error);
+                  console.error(`❌ Error in processComment:`, error);
                 }
               } else {
-                // console.log(`🔄 Calling processPost...`);
+                console.log(`🔄 Calling processPost...`);
                 try {
                   // This is a regular post with hashtag, check for video URLs in the same post
                   await this.processPost(post, text);
-                  // console.log(`✅ processPost completed successfully`);
+                  console.log(`✅ processPost completed successfully`);
                 } catch (error) {
-                  // console.error(`❌ Error in processPost:`, error);
+                  console.error(`❌ Error in processPost:`, error);
                 }
               }
               
               processedCount++;
             } else {
-              // console.log(`⏭️ SKIPPING post (already replied)`);
+              console.log(`⏭️ SKIPPING post (already replied)`);
             }
           } else {
-            // console.log(`⏭️ SKIPPING post (no hashtag found)`);
+            console.log(`⏭️ SKIPPING post (no hashtag found)`);
           }
         } else {
-          // console.log(`❌ SKIPPING post (no text content)`);
+          console.log(`❌ SKIPPING post (no text content)`);
         }
       }
       
-      // console.log(`🏁 SUMMARY: Processed ${processedCount} new posts out of ${recentPosts.length} recent posts (${response.data.posts.length} total found)`);
+      console.log(`🏁 SUMMARY: Processed ${processedCount} new posts out of ${recentPosts.length} recent posts (${response.data.posts.length} total found)`);
       
     } catch (error) {
       // console.error('❌ Error searching for posts:', error);
@@ -325,13 +325,13 @@ export class BskyBot {
 
   private async processComment(commentPost: any, commentText: string): Promise<void> {
     try {
-      // console.log(`💭 Processing comment: ${commentText}`);
+      console.log(`💭 Processing comment: ${commentText}`);
       
       // Get the parent post that this comment is replying to
       const replyInfo = (commentPost.record as any).reply;
       const parentUri = replyInfo.parent.uri || replyInfo.root.uri;
       
-      // console.log(`📍 Getting parent post: ${parentUri}`);
+      console.log(`📍 Getting parent post: ${parentUri}`);
       
       // Fetch the parent post using the correct API
       const parentResponse = await this.agent.app.bsky.feed.getPostThread({
@@ -349,18 +349,18 @@ export class BskyBot {
         let parentText = '';
         if (parentPost && parentPost.record && parentPost.record.text) {
           parentText = parentPost.record.text;
-          // console.log(`📝 Parent post text: "${parentText}"`);
+          console.log(`📝 Parent post text: "${parentText}"`);
         }
         
         // Only use embed/card data (never truncated) - NO FALLBACKS TO PREVENT BAD LINKS
         let videoInfo = null;
         if (parentPost.embed && parentPost.embed.external && parentPost.embed.external.uri) {
           const embedUri = parentPost.embed.external.uri;
-          // console.log(`🌐 Using embed.external.uri for video: ${embedUri}`);
+          console.log(`🌐 Using embed.external.uri for video: ${embedUri}`);
           videoInfo = URLUtils.extractVideoInfo(embedUri);
           
           if (videoInfo && videoInfo.url) {
-            // console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url} (${videoInfo.type || 'video'})`);
+            console.log(`✅ Found ${videoInfo.platform} URL in parent post: ${videoInfo.url} (${videoInfo.type || 'video'})`);
             // Reply to the commenter who requested it, not the original post
             await this.replyWithPrivacyLink(commentPost, videoInfo);
           } else {
