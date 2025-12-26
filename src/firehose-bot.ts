@@ -1,7 +1,7 @@
 import { Jetstream } from '@skyware/jetstream';
 import { BskyAgent, RichText } from '@atproto/api';
 import * as dotenv from 'dotenv';
-import http from 'http';
+import express from 'express';
 
 // Load environment variables
 dotenv.config();
@@ -30,19 +30,23 @@ class FirehoseBot {
     });
     console.log(`✅ Logged in as ${this.config.handle}`);
 
-    // Start health check server for Railway
+    // Start Express server for Railway health checks
+    const app = express();
     const PORT = process.env.PORT || 3000;
-    const server = http.createServer((req, res) => {
-      if (req.url === '/health') {
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('OK');
-      } else {
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('Bluesky VideoPrivacy Bot is running');
-      }
+    
+    app.get('/', (req, res) => {
+      res.send('Bluesky VideoPrivacy Bot is running 🤖');
     });
     
-    server.listen(PORT, () => {
+    app.get('/health', (req, res) => {
+      res.status(200).json({ 
+        status: 'ok', 
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+      });
+    });
+    
+    app.listen(PORT, () => {
       console.log(`🏥 Health check server running on port ${PORT}`);
     });
 
