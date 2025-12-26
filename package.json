@@ -1,6 +1,7 @@
 {
   "name": "bluesky-youtube-privacy-bot",
   "version": "1.0.0",
+  "type": "module",
   "description": "A Bluesky bot that monitors hashtags and converts YouTube URLs to privacy-friendly alternatives",
   "main": "dist/index.js",
   "scripts": {
