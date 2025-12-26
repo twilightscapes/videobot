@@ -95,33 +95,31 @@ class FirehoseBot {
         // Mark as processed
         this.processedPosts.add(postUri);
         
-        // If this is a reply to another post, we should check the parent for the video
-        let targetPost = post;
-        let targetPostUri = postUri;
+        // Check if already replied to this post
+        const alreadyReplied = await this.hasAlreadyReplied(postUri);
+        if (alreadyReplied) {
+          console.log('   ⏭️  Already replied, skipping');
+          return;
+        }
+        
+        // If this is a reply, we need to get the video from the parent post
+        let videoSourcePost = post;
         
         if (post.reply?.parent?.uri) {
-          console.log('   📝 This is a reply, fetching parent post...');
+          console.log('   📝 This is a reply, fetching parent post for video...');
           try {
             const parentThread = await this.agent.getPostThread({ uri: post.reply.parent.uri });
             if ('post' in parentThread.data.thread) {
-              targetPost = (parentThread.data.thread as any).post.record;
-              targetPostUri = post.reply.parent.uri;
-              console.log(`   👆 Parent post URI: ${targetPostUri}`);
+              videoSourcePost = (parentThread.data.thread as any).post.record;
+              console.log(`   👆 Parent post URI: ${post.reply.parent.uri}`);
             }
           } catch (error) {
             console.log('   ⚠️  Could not fetch parent post, using current post');
           }
         }
         
-        // Check if already replied to the target post
-        const alreadyReplied = await this.hasAlreadyReplied(targetPostUri);
-        if (alreadyReplied) {
-          console.log('   ⏭️  Already replied, skipping');
-          return;
-        }
-        
-        // Process the target post (either original or parent)
-        await this.processPost(targetPostUri, targetPost);
+        // Process: reply to postUri (the one with hashtag), but get video from videoSourcePost
+        await this.processPost(postUri, videoSourcePost);
         
       } catch (error) {
         console.error('Error processing post:', error);
