@@ -7,3 +7,4 @@ dist/
 # Netlify
 .netlify/
 functions-serve/
+.env

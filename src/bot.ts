@@ -146,9 +146,9 @@ export class BskyBot {
       ];
       
       // Use the most common variation for search
-      const searchQuery = 'VideoPrivacy';
+      const searchQuery = '#VideoPrivacy';
       console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
-      console.log(`🔍 Search query: "${searchQuery}" (trying VideoPrivacy capitalization)`);
+      console.log(`🔍 Search query: "${searchQuery}"`);
       
       const response = await this.agent.app.bsky.feed.searchPosts({
         q: searchQuery,
