@@ -393,7 +393,6 @@ class FirehoseBot {
 }
 
 // Run the bot
-async function main() {// Run the bot
 async function main() {
   const config: BotConfig = {
     handle: process.env.BLUESKY_HANDLE || '',
