@@ -265,8 +265,19 @@ class FirehoseBot {
       const rt = new RichText({ text: replyText });
       await rt.detectFacets(this.agent);
       
-      // Get thumbnail
+      // Get thumbnail - try custom overlay first, fallback to YouTube direct
       const thumbnailBlob = await this.fetchThumbnail(videoId);
+      
+      // Always create embed with or without thumbnail
+      const embed = {
+        $type: 'app.bsky.embed.external',
+        external: {
+          uri: privacyUrl,
+          title: metadata?.title || 'Watch on adblock.video',
+          description: metadata?.description || `Watch ad-free on adblock.video`,
+          ...(thumbnailBlob && { thumb: thumbnailBlob })
+        }
+      };
       
       // Create reply
       await this.agent.post({
@@ -276,15 +287,7 @@ class FirehoseBot {
           root: { uri: rootUri, cid: rootCid },
           parent: { uri: postUri, cid: postCid }
         },
-        embed: thumbnailBlob ? {
-          $type: 'app.bsky.embed.external',
-          external: {
-            uri: privacyUrl,
-            title: metadata?.title || 'Watch on adblock.video',
-            description: metadata?.description || `Watch ${videoId} by ${metadata?.author || 'YouTube'}`,
-            thumb: thumbnailBlob
-          }
-        } : undefined
+        embed
       });
       
       console.log(`   ✅ Reply posted successfully!`);
@@ -312,30 +315,53 @@ class FirehoseBot {
   }
 
   private async fetchThumbnail(videoId: string) {
+    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    
+    // Try custom overlay API first, but with its own try-catch
     try {
-      const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       const overlayUrl = `https://adblock.video/api/og-video-image?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
+      console.log(`   🖼️  Trying custom overlay: ${overlayUrl}`);
       
-      console.log(`   🖼️  Fetching thumbnail from: ${overlayUrl}`);
       const response = await fetch(overlayUrl);
-      console.log(`   📥 Thumbnail response status: ${response.status}`);
+      console.log(`   📥 Custom overlay response: ${response.status}`);
+      
+      if (response.ok) {
+        const imageBuffer = await response.arrayBuffer();
+        console.log(`   📦 Custom overlay buffer: ${imageBuffer.byteLength} bytes`);
+        
+        const uploadResponse = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
+          encoding: 'image/jpeg'
+        });
+        
+        console.log(`   ✅ Custom thumbnail uploaded successfully`);
+        return uploadResponse.data.blob;
+      }
+    } catch (error) {
+      console.log(`   ⚠️  Custom overlay failed: ${error instanceof Error ? error.message : error}`);
+    }
+    
+    // Fallback to YouTube thumbnail directly
+    try {
+      console.log(`   🔄 Fetching YouTube thumbnail directly: ${thumbnailUrl}`);
+      const response = await fetch(thumbnailUrl);
+      console.log(`   📥 YouTube thumbnail response: ${response.status}`);
       
       if (!response.ok) {
-        console.log(`   ⚠️  Thumbnail fetch failed with status ${response.status}`);
+        console.log(`   ⚠️  YouTube thumbnail failed with status ${response.status}`);
         return null;
       }
       
       const imageBuffer = await response.arrayBuffer();
-      console.log(`   📦 Image buffer size: ${imageBuffer.byteLength} bytes`);
+      console.log(`   📦 YouTube thumbnail buffer: ${imageBuffer.byteLength} bytes`);
       
       const uploadResponse = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
         encoding: 'image/jpeg'
       });
       
-      console.log(`   ✅ Thumbnail uploaded successfully`);
+      console.log(`   ✅ YouTube thumbnail uploaded successfully`);
       return uploadResponse.data.blob;
     } catch (error) {
-      console.log(`   ❌ Could not fetch thumbnail: ${error}`);
+      console.log(`   ❌ YouTube thumbnail also failed: ${error instanceof Error ? error.message : error}`);
       return null;
     }
   }
