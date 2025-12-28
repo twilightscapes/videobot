@@ -259,7 +259,7 @@ class FirehoseBot {
       const metadata = await this.fetchVideoMetadata(videoId);
       
       // Build reply text
-      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\n\nPost the hashtag #AdBlock or #VideoPrivacy on any post containing a YouTube video to have an ad-free version provided.`;
+      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\n\nPost the hashtag #AdBlock on any post containing a YouTube video to have an ad-free version provided.`;
       
       // Create rich text with clickable link
       const rt = new RichText({ text: replyText });
