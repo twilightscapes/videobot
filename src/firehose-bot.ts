@@ -349,7 +349,18 @@ class FirehoseBot {
         const overlayUrl = `https://adblock.video/api/og-video-image?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
         console.log(`   🖼️  Trying custom overlay (${quality}): ${overlayUrl}`);
         
-        const response = await fetch(overlayUrl);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch(overlayUrl, { 
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'AdBlockVideoBot/1.0'
+          }
+        });
+        clearTimeout(timeout);
+        
+        console.log(`   📥 Custom overlay (${quality}) response: ${response.status}`);
         
         if (response.ok) {
           const imageBuffer = await response.arrayBuffer();
@@ -361,9 +372,12 @@ class FirehoseBot {
           
           console.log(`   ✅ Custom thumbnail (${quality}) with play icon uploaded successfully`);
           return uploadResponse.data.blob;
+        } else {
+          console.log(`   ⚠️  Custom overlay (${quality}) returned status ${response.status}`);
         }
       } catch (error) {
-        console.log(`   ⚠️  Custom overlay (${quality}) failed: ${error instanceof Error ? error.message : error}`);
+        const errorMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        console.log(`   ⚠️  Custom overlay (${quality}) failed: ${errorMsg}`);
       }
       
       // Fallback to YouTube thumbnail directly for this quality
