@@ -259,7 +259,12 @@ class FirehoseBot {
       const metadata = await this.fetchVideoMetadata(videoId);
       
       // Build reply text
-      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\n\nPost the hashtag #AdBlock on any post containing a YouTube video to have an ad-free, bookmarkable version provided.`;
+      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\n\nPost the hashtag #AdBlock on any post containing a YouTube video to have an ad-free, bookmarkable version provided. Use #AdBlock on any post with a youtube video
+
+• Watch videos without the dreaded 'SKIP ADS' button
+• Subscribe videos on Bsky to your watchlist.
+• Save and watch videos later.
+• Share custom start/stop times and looped videos.`;
       
       // Create rich text with clickable link
       const rt = new RichText({ text: replyText });
