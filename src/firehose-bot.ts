@@ -259,7 +259,7 @@ class FirehoseBot {
       const metadata = await this.fetchVideoMetadata(videoId);
       
       // Build reply text (must be under 300 characters)
-      const replyText = `Ad-free video link below 👇\n\n• No dreaded 'SKIP ADS' button\n• Add to your watchlist\n• Save and watch later\n• Share custom clips and loops\n\nUse #AdBlock on any YouTube post`;
+      const replyText = `Here's the link you requested 👇\n\n• No dreaded 'SKIP ADS' button\n• Add to your watchlist\n• Save and watch later\n• Share custom clips and loops\n\nUse #AdBlock on any YouTube post`;
       
       // Create rich text with clickable link
       const rt = new RichText({ text: replyText });
