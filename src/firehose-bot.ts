@@ -259,7 +259,7 @@ class FirehoseBot {
       const metadata = await this.fetchVideoMetadata(videoId);
       
       // Build reply text
-      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\n\nPost the hashtag ${this.config.hashtag} on any post containing a YouTube video to have an ad-free version provided.`;
+      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\n\nPost the hashtag #AdBlock or #VideoPrivacy on any post containing a YouTube video to have an ad-free version provided.`;
       
       // Create rich text with clickable link
       const rt = new RichText({ text: replyText });
@@ -316,17 +316,26 @@ class FirehoseBot {
       const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       const overlayUrl = `https://adblock.video/api/og-video-image?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
       
+      console.log(`   🖼️  Fetching thumbnail from: ${overlayUrl}`);
       const response = await fetch(overlayUrl);
-      if (!response.ok) return null;
+      console.log(`   📥 Thumbnail response status: ${response.status}`);
+      
+      if (!response.ok) {
+        console.log(`   ⚠️  Thumbnail fetch failed with status ${response.status}`);
+        return null;
+      }
       
       const imageBuffer = await response.arrayBuffer();
+      console.log(`   📦 Image buffer size: ${imageBuffer.byteLength} bytes`);
+      
       const uploadResponse = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
         encoding: 'image/jpeg'
       });
       
+      console.log(`   ✅ Thumbnail uploaded successfully`);
       return uploadResponse.data.blob;
     } catch (error) {
-      console.log('   ⚠️  Could not fetch thumbnail');
+      console.log(`   ❌ Could not fetch thumbnail: ${error}`);
       return null;
     }
   }
