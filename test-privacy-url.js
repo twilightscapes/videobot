@@ -2,7 +2,7 @@
 const { URLUtils } = require('./dist/utils');
 
 const testUrl = "https://youtu.be/MxmKc0OhsnU?si=KicBE3tt2pcLmgrF";
-const privacyUrl = URLUtils.createPrivacyUrl(testUrl, "videoprivacy.org");
+const privacyUrl = URLUtils.createPrivacyUrl(testUrl, "adblock.video");
 
 console.log("Original URL:", testUrl);
 console.log("Privacy URL:", privacyUrl);

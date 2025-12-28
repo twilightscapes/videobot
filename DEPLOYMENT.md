@@ -1,7 +1,7 @@
-# Bluesky YouTube Privacy Bot - Deployment Guide
+# Bluesky Ad Block Video Bot - Deployment Guide
 
 ## Overview
-This bot monitors Bluesky for the `#videoprivacy` hashtag and responds with privacy-friendly video links from videoprivacy.org.
+This bot monitors Bluesky for the `#adblock` hashtag and responds with ad-free video links from adblock.video.
 
 ## Architecture
 - **Core Logic**: TypeScript bot (`src/bot.ts`)
@@ -16,8 +16,8 @@ Create a `.env` file with:
 ```bash
 BLUESKY_HANDLE=your.handle.bsky.social
 BLUESKY_PASSWORD=your-app-password
-HASHTAG_TO_MONITOR=#videoprivacy
-PRIVACY_DOMAIN=videoprivacy.org
+HASHTAG_TO_MONITOR=#adblock
+PRIVACY_DOMAIN=adblock.video
 ```
 
 ### 2. Deploy to Netlify
@@ -31,7 +31,7 @@ PRIVACY_DOMAIN=videoprivacy.org
 2. Add new cron job:
    - **URL**: `https://your-site.netlify.app/.netlify/functions/bot`
    - **Schedule**: `* * * * *` (every minute)
-   - **Title**: "Bluesky Video Privacy Bot"
+   - **Title**: "Bluesky Ad Block Video Bot"
 3. Enable the job
 
 ## Key Features

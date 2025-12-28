@@ -37,7 +37,7 @@ class FirehoseBot {
     const PORT = process.env.PORT || 3000;
     
     app.get('/', (req, res) => {
-      res.send('Bluesky VideoPrivacy Bot is running 🤖');
+      res.send('Bluesky AdBlock Video Bot is running 🤖');
     });
     
     app.get('/health', (req, res) => {
@@ -85,11 +85,15 @@ class FirehoseBot {
         const postUri = `at://${event.did}/${event.commit.collection}/${event.commit.rkey}`;
         if (this.processedPosts.has(postUri)) return;
         
-        // Check for hashtag (case-insensitive)
-        const hashtag = this.config.hashtag.toLowerCase().replace('#', '');
-        if (!post.text.toLowerCase().includes(hashtag)) return;
+        // Check for hashtag (case-insensitive) - supports both #AdBlock and #VideoPrivacy
+        const postTextLower = post.text.toLowerCase();
+        const hasAdBlock = postTextLower.includes('adblock');
+        const hasVideoPrivacy = postTextLower.includes('videoprivacy');
         
-        console.log(`\n🎯 Found post with ${this.config.hashtag}:`);
+        if (!hasAdBlock && !hasVideoPrivacy) return;
+        
+        const foundHashtag = hasAdBlock ? '#AdBlock' : '#VideoPrivacy';
+        console.log(`\n🎯 Found post with ${foundHashtag}:`);
         console.log(`   Author: ${event.did}`);
         console.log(`   Text: ${post.text.substring(0, 100)}...`);
         console.log(`   URI: ${postUri}`);
@@ -200,7 +204,7 @@ class FirehoseBot {
     }
     
     // Create privacy link
-    const privacyUrl = `https://videoprivacy.org/video?video=${videoId}`;
+    const privacyUrl = `https://adblock.video/video?video=${videoId}`;
     
     // Reply with privacy link
     await this.replyWithPrivacyLink(postUri, privacyUrl, videoId);
@@ -255,7 +259,7 @@ class FirehoseBot {
       const metadata = await this.fetchVideoMetadata(videoId);
       
       // Build reply text
-      const replyText = `The Video Privacy Link You Requested:\n${privacyUrl}\n\nPost the hashtag ${this.config.hashtag} on any post containing a YouTube video to have an ad-free version provided.`;
+      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\n\nPost the hashtag ${this.config.hashtag} on any post containing a YouTube video to have an ad-free version provided.`;
       
       // Create rich text with clickable link
       const rt = new RichText({ text: replyText });
@@ -276,7 +280,7 @@ class FirehoseBot {
           $type: 'app.bsky.embed.external',
           external: {
             uri: privacyUrl,
-            title: metadata?.title || 'Watch on VideoPrivacy.org',
+            title: metadata?.title || 'Watch on adblock.video',
             description: metadata?.description || `Watch ${videoId} by ${metadata?.author || 'YouTube'}`,
             thumb: thumbnailBlob
           }
@@ -297,7 +301,7 @@ class FirehoseBot {
 
   private async fetchVideoMetadata(videoId: string) {
     try {
-      const response = await fetch(`https://videoprivacy.org/api/metadata?videoId=${videoId}`);
+      const response = await fetch(`https://adblock.video/api/metadata?videoId=${videoId}`);
       if (response.ok) {
         return await response.json();
       }
@@ -310,7 +314,7 @@ class FirehoseBot {
   private async fetchThumbnail(videoId: string) {
     try {
       const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-      const overlayUrl = `https://videoprivacy.org/api/og-video-image?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
+      const overlayUrl = `https://adblock.video/api/og-video-image?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
       
       const response = await fetch(overlayUrl);
       if (!response.ok) return null;
@@ -333,7 +337,7 @@ async function main() {
   const config: BotConfig = {
     handle: process.env.BLUESKY_HANDLE || '',
     password: process.env.BLUESKY_PASSWORD || '',
-    hashtag: process.env.HASHTAG_TO_MONITOR || '#videoprivacy'
+    hashtag: process.env.HASHTAG_TO_MONITOR || '#adblock'
   };
 
   if (!config.handle || !config.password) {

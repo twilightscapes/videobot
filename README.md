@@ -1,6 +1,6 @@
-# Bluesky YouTube Privacy Bot
+# Bluesky Ad Block Video Bot
 
-A bot for Bluesky that monitors posts with specific hashtags, extracts video URLs from multiple platforms, and replies with privacy-friendly alternatives using your video privacy service.
+A bot for Bluesky that monitors posts with specific hashtags, extracts video URLs from multiple platforms, and replies with ad-free alternatives using Ad Block Video service.
 
 ## Features
 

@@ -8,8 +8,8 @@ async function main() {
   const bot = new BskyBot({
     handle: process.env.BLUESKY_HANDLE!,
     password: process.env.BLUESKY_PASSWORD!,
-    hashtag: process.env.HASHTAG_TO_MONITOR || '#videoprivacy',
-    privacyDomain: process.env.PRIVACY_DOMAIN || 'your-domain.org'
+    hashtag: process.env.HASHTAG_TO_MONITOR || '#adblock',
+    privacyDomain: process.env.PRIVACY_DOMAIN || 'adblock.video'
   });
 
   // console.log('Starting Bluesky YouTube Privacy Bot...');

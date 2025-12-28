@@ -2,10 +2,10 @@ const { URLUtils } = require('./dist/utils');
 
 // Test URL detection
 const testTexts = [
-  'Check this out #videoprivacy https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-  '#videoprivacy www.youtube.com/watch?v=SmmL',
-  'Look at this video https://youtu.be/dQw4w9WgXcQ #videoprivacy',
-  '#videoprivacy'
+  'Check this out #adblock https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  '#adblock www.youtube.com/watch?v=SmmL',
+  'Look at this video https://youtu.be/dQw4w9WgXcQ #adblock',
+  '#adblock'
 ];
 
 console.log('Testing URL detection:');

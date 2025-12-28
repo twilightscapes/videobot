@@ -141,12 +141,14 @@ export class BskyBot {
       const searchVariations = [
         baseHashtag,
         baseHashtag.toLowerCase(),
-        'VideoPrivacy',  // Common capitalization
-        'videoprivacy'   // All lowercase
+        'AdBlock',       // New branding
+        'adblock',
+        'VideoPrivacy',  // Legacy branding
+        'videoprivacy'
       ];
       
-      // Use the most common variation for search
-      const searchQuery = '#VideoPrivacy';
+      // Search for both hashtags
+      const searchQuery = '#AdBlock OR #VideoPrivacy';
       console.log(`🔍 Searching for posts with hashtag: ${this.config.hashtag}`);
       console.log(`🔍 Search query: "${searchQuery}"`);
       
@@ -483,7 +485,7 @@ export class BskyBot {
       const privacyUrl = await URLUtils.createPrivacyUrl(videoInfo.url, this.config.privacyDomain);
       
       // Short prefix with URL on new line
-      const replyText = `The Video Privacy Link You Requested:\n${privacyUrl}\nPost the hashtag #VideoPrivacy on any post containing a YouTube video to have an ad-free version provided.`;
+      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\nPost the hashtag #AdBlock on any post containing a YouTube video to have an ad-free version provided.`;
       
       console.log(`💬 Posting reply: ${replyText}`);
       console.log(`📍 Replying to: ${originalPost.uri}`);
@@ -553,11 +555,11 @@ export class BskyBot {
           ? this.config.privacyDomain 
           : `https://${this.config.privacyDomain}`;
         
-        // Fetch video metadata from videoprivacy.org
+        // Fetch video metadata from adblock.video
         const metadataUrl = `${domain}/api/metadata?videoId=${videoInfo.id}`;
         
-        let title = 'WATCH: With Video Privacy';
-        let description = 'Use Hashtag #VideoPrivacy to watch without tracking, data collection or ads';
+        let title = 'WATCH: With Ad Block Video';
+        let description = 'Use Hashtag #AdBlock to watch without tracking, data collection or ads';
         // Always use maxresdefault for highest quality
         let thumbnailUrl = `https://img.youtube.com/vi/${videoInfo.id}/maxresdefault.jpg`;
         
@@ -588,7 +590,7 @@ export class BskyBot {
           }
         };
         
-        // Get thumbnail with play icon overlay from videoprivacy.org API
+        // Get thumbnail with play icon overlay from adblock.video API
         const privacyThumbnailUrl = `${domain}/api/og-video-image?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
         
         try {

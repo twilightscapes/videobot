@@ -8,6 +8,6 @@ const videoInfo = URLUtils.extractVideoInfo(shortsUrl);
 console.log('Extracted video info:', videoInfo);
 
 if (videoInfo) {
-  const privacyUrl = URLUtils.createPrivacyUrl(shortsUrl, 'videoprivacy.org');
+  const privacyUrl = URLUtils.createPrivacyUrl(shortsUrl, 'adblock.video');
   console.log('Generated privacy URL:', privacyUrl);
 }
