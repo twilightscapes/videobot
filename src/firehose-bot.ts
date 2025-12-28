@@ -258,8 +258,8 @@ class FirehoseBot {
       // Fetch video metadata
       const metadata = await this.fetchVideoMetadata(videoId);
       
-      // Build reply text
-      const replyText = `The Ad Block Video Link You Requested:\n${privacyUrl}\n\nUse #AdBlock or #VideoPrivacy on any post with a YouTube video to get:\n\n• Ad-free viewing (no 'SKIP ADS' button)\n• Subscribe videos on Bsky to your watchlist\n• Save and watch videos later\n• Share custom start/stop times and looped videos`;
+      // Build reply text (must be under 300 characters)
+      const replyText = `${privacyUrl}\n\nWatch ad-free! No tracking, no data collection.\n\nUse #AdBlock or #VideoPrivacy on any YouTube post to get an ad-free link with watchlist, sharing, and custom clips.`;
       
       // Create rich text with clickable link
       const rt = new RichText({ text: replyText });
