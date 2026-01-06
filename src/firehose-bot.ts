@@ -87,8 +87,8 @@ class FirehoseBot {
         
         // Check for hashtag (case-insensitive) - supports both #AdBlock and #VideoPrivacy
         const postTextLower = post.text.toLowerCase();
-        const hasAdBlock = postTextLower.includes('adblock');
-        const hasVideoPrivacy = postTextLower.includes('videoprivacy');
+        const hasAdBlock = postTextLower.includes('#adblock');
+        const hasVideoPrivacy = postTextLower.includes('#videoprivacy');
         
         if (!hasAdBlock && !hasVideoPrivacy) return;
         
