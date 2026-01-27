@@ -15,13 +15,44 @@ interface BotConfig {
 class FirehoseBot {
   private agent: BskyAgent;
   private config: BotConfig;
-  private processedPosts = new Set<string>();
+  private processedPosts = new Map<string, number>(); // Store with timestamp
   private lastReplyTime = 0;
   private minDelayBetweenReplies = 10000; // 10 seconds between replies
+  private readonly MEMORY_LIMIT = 10000; // Keep only last N posts
+  private readonly POST_RETENTION_MS = 3600000; // 1 hour retention
 
   constructor(config: BotConfig) {
     this.config = config;
     this.agent = new BskyAgent({ service: 'https://bsky.social' });
+    this.startMemoryCleanup();
+  }
+
+  private startMemoryCleanup() {
+    // Clean up old entries every 5 minutes
+    setInterval(() => {
+      const now = Date.now();
+      let cleanedCount = 0;
+
+      for (const [postUri, timestamp] of this.processedPosts.entries()) {
+        // Remove entries older than 1 hour
+        if (now - timestamp > this.POST_RETENTION_MS) {
+          this.processedPosts.delete(postUri);
+          cleanedCount++;
+        }
+      }
+
+      if (cleanedCount > 0) {
+        console.log(`🧹 Cleaned up ${cleanedCount} old post entries. Current cache size: ${this.processedPosts.size}`);
+      }
+
+      // Also enforce size limit as backup
+      if (this.processedPosts.size > this.MEMORY_LIMIT) {
+        const entries = Array.from(this.processedPosts.entries()).sort((a, b) => a[1] - b[1]);
+        const toDelete = entries.slice(0, entries.length - this.MEMORY_LIMIT);
+        toDelete.forEach(([uri]) => this.processedPosts.delete(uri));
+        console.log(`📊 Cache exceeded limit, deleted ${toDelete.length} oldest entries`);
+      }
+    }, 5 * 60 * 1000); // Every 5 minutes
   }
 
   async start() {
@@ -84,6 +115,9 @@ class FirehoseBot {
         // Skip if already processed
         const postUri = `at://${event.did}/${event.commit.collection}/${event.commit.rkey}`;
         if (this.processedPosts.has(postUri)) return;
+        
+        // Mark as processed with current timestamp
+        this.processedPosts.set(postUri, Date.now());
         
         // Check for hashtag (case-insensitive) - supports both #AdBlock and #VideoPrivacy
         const postTextLower = post.text.toLowerCase();
