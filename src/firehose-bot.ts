@@ -20,6 +20,8 @@ class FirehoseBot {
   private minDelayBetweenReplies = 10000; // 10 seconds between replies
   private readonly MEMORY_LIMIT = 10000; // Keep only last N posts
   private readonly POST_RETENTION_MS = 3600000; // 1 hour retention
+  private activeProcessingCount = 0;
+  private maxConcurrentProcessing = 2; // Limit concurrent processing to reduce memory
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -132,34 +134,8 @@ class FirehoseBot {
         console.log(`   Text: ${post.text.substring(0, 100)}...`);
         console.log(`   URI: ${postUri}`);
         
-        // Mark as processed
-        this.processedPosts.add(postUri);
-        
-        // Check if already replied to this post
-        const alreadyReplied = await this.hasAlreadyReplied(postUri);
-        if (alreadyReplied) {
-          console.log('   ⏭️  Already replied, skipping');
-          return;
-        }
-        
-        // If this is a reply, we need to get the video from the parent post
-        let videoSourcePost = post;
-        
-        if (post.reply?.parent?.uri) {
-          console.log('   📝 This is a reply, fetching parent post for video...');
-          try {
-            const parentThread = await this.agent.getPostThread({ uri: post.reply.parent.uri });
-            if ('post' in parentThread.data.thread) {
-              videoSourcePost = (parentThread.data.thread as any).post.record;
-              console.log(`   👆 Parent post URI: ${post.reply.parent.uri}`);
-            }
-          } catch (error) {
-            console.log('   ⚠️  Could not fetch parent post, using current post');
-          }
-        }
-        
-        // Process: reply to postUri (the one with hashtag), but get video from videoSourcePost
-        await this.processPost(postUri, videoSourcePost);
+        // Queue post processing to limit concurrency and memory usage
+        this.queuePostProcessing(postUri, post);
         
       } catch (error) {
         console.error('Error processing post:', error);
@@ -185,6 +161,48 @@ class FirehoseBot {
     // Keep the process alive indefinitely
     // This prevents the start() method from returning
     await new Promise(() => {});
+  }
+
+  private async queuePostProcessing(postUri: string, post: any) {
+    // Wait if we're at max concurrent processing
+    while (this.activeProcessingCount >= this.maxConcurrentProcessing) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Start processing (don't await)
+    this.activeProcessingCount++;
+    (async () => {
+      try {
+        // Fetch parent if needed
+        let videoSourcePost = post;
+        if (post.reply?.parent?.uri) {
+          console.log('   📝 This is a reply, fetching parent post for video...');
+          try {
+            const parentThread = await this.agent.getPostThread({ uri: post.reply.parent.uri });
+            if ('post' in parentThread.data.thread) {
+              videoSourcePost = (parentThread.data.thread as any).post.record;
+              console.log(`   👆 Parent post URI: ${post.reply.parent.uri}`);
+            }
+          } catch (error) {
+            console.log('   ⚠️  Could not fetch parent post, using current post');
+          }
+        }
+
+        // Check if already replied to this post
+        const alreadyReplied = await this.hasAlreadyReplied(postUri);
+        if (alreadyReplied) {
+          console.log('   ⏭️  Already replied, skipping');
+          return;
+        }
+
+        // Process: reply to postUri (the one with hashtag), but get video from videoSourcePost
+        await this.processPost(postUri, videoSourcePost);
+      } catch (error) {
+        console.error('   ❌ Error in queued processing:', error);
+      } finally {
+        this.activeProcessingCount--;
+      }
+    })();
   }
 
   private async hasAlreadyReplied(postUri: string): Promise<boolean> {
@@ -299,8 +317,14 @@ class FirehoseBot {
       const rt = new RichText({ text: replyText });
       await rt.detectFacets(this.agent);
       
-      // Get thumbnail - try custom overlay first, fallback to YouTube direct
-      const thumbnailBlob = await this.fetchThumbnail(videoId);
+      // Get thumbnail with aggressive timeout - skip if it takes too long
+      let thumbnailBlob = null;
+      try {
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)); // 5 second max
+        thumbnailBlob = await Promise.race([this.fetchThumbnail(videoId), timeoutPromise]);
+      } catch (error) {
+        console.log('   ⚠️  Thumbnail fetch failed, continuing without it');
+      }
       
       // Always create embed with or without thumbnail
       const embed = {
