@@ -184,11 +184,11 @@ class FirehoseBot {
           }
         }
 
-        // Handle quoted posts (post.embed.$type === 'app.bsky.embed.record' or 'app.bsky.embed.recordWithMedia')
-        if (!videoSourcePost.embed?.uri && post.embed) {
-          const embedType = post.embed.$type;
+        // Handle quoted posts - check if videoSourcePost contains a quoted post
+        if (videoSourcePost.embed) {
+          const embedType = videoSourcePost.embed.$type;
           if (embedType === 'app.bsky.embed.record' || embedType === 'app.bsky.embed.recordWithMedia') {
-            const quotedPostUri = post.embed.record?.uri;
+            const quotedPostUri = videoSourcePost.embed.record?.uri;
             if (quotedPostUri) {
               try {
                 const quotedThread = await this.agent.getPostThread({ uri: quotedPostUri });
@@ -196,7 +196,7 @@ class FirehoseBot {
                   videoSourcePost = (quotedThread.data.thread as any).post.record;
                 }
               } catch (error) {
-                // Use current post if quoted fetch fails
+                // Use current videoSourcePost if quoted fetch fails
               }
             }
           }
