@@ -184,6 +184,24 @@ class FirehoseBot {
           }
         }
 
+        // Handle quoted posts (post.embed.$type === 'app.bsky.embed.record' or 'app.bsky.embed.recordWithMedia')
+        if (!videoSourcePost.embed?.uri && post.embed) {
+          const embedType = post.embed.$type;
+          if (embedType === 'app.bsky.embed.record' || embedType === 'app.bsky.embed.recordWithMedia') {
+            const quotedPostUri = post.embed.record?.uri;
+            if (quotedPostUri) {
+              try {
+                const quotedThread = await this.agent.getPostThread({ uri: quotedPostUri });
+                if ('post' in quotedThread.data.thread) {
+                  videoSourcePost = (quotedThread.data.thread as any).post.record;
+                }
+              } catch (error) {
+                // Use current post if quoted fetch fails
+              }
+            }
+          }
+        }
+
         // Check if already replied to this post
         const alreadyReplied = await this.hasAlreadyReplied(postUri);
         if (alreadyReplied) {
@@ -193,7 +211,7 @@ class FirehoseBot {
         // Process: reply to postUri (the one with hashtag), but get video from videoSourcePost
         await this.processPost(postUri, videoSourcePost);
       } catch (error) {
-        console.error('   ❌ Error in queued processing:', error);
+        console.error('Error in queued processing:', error);
       } finally {
         this.activeProcessingCount--;
       }
