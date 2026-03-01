@@ -43,16 +43,17 @@ class FirehoseBot {
         }
       }
 
-      if (cleanedCount > 0) {
-        console.log(`🧹 Cleaned up ${cleanedCount} old post entries. Current cache size: ${this.processedPosts.size}`);
-      }
+      // Silently clean up without logging to avoid rate limit issues
+      // if (cleanedCount > 0) {
+      //   console.log(`🧹 Cleaned up ${cleanedCount} old post entries. Current cache size: ${this.processedPosts.size}`);
+      // }
 
       // Also enforce size limit as backup
       if (this.processedPosts.size > this.MEMORY_LIMIT) {
         const entries = Array.from(this.processedPosts.entries()).sort((a, b) => a[1] - b[1]);
         const toDelete = entries.slice(0, entries.length - this.MEMORY_LIMIT);
         toDelete.forEach(([uri]) => this.processedPosts.delete(uri));
-        console.log(`📊 Cache exceeded limit, deleted ${toDelete.length} oldest entries`);
+        // Silent cleanup
       }
     }, 5 * 60 * 1000); // Every 5 minutes
   }
@@ -129,10 +130,7 @@ class FirehoseBot {
         if (!hasAdBlock && !hasVideoPrivacy) return;
         
         const foundHashtag = hasAdBlock ? '#AdBlock' : '#VideoPrivacy';
-        console.log(`\n🎯 Found post with ${foundHashtag}:`);
-        console.log(`   Author: ${event.did}`);
-        console.log(`   Text: ${post.text.substring(0, 100)}...`);
-        console.log(`   URI: ${postUri}`);
+        // Reduce logging - only log actual replies, not every hashtag mention
         
         // Queue post processing to limit concurrency and memory usage
         this.queuePostProcessing(postUri, post);
@@ -176,22 +174,19 @@ class FirehoseBot {
         // Fetch parent if needed
         let videoSourcePost = post;
         if (post.reply?.parent?.uri) {
-          console.log('   📝 This is a reply, fetching parent post for video...');
           try {
             const parentThread = await this.agent.getPostThread({ uri: post.reply.parent.uri });
             if ('post' in parentThread.data.thread) {
               videoSourcePost = (parentThread.data.thread as any).post.record;
-              console.log(`   👆 Parent post URI: ${post.reply.parent.uri}`);
             }
           } catch (error) {
-            console.log('   ⚠️  Could not fetch parent post, using current post');
+            // Use current post if parent fetch fails
           }
         }
 
         // Check if already replied to this post
         const alreadyReplied = await this.hasAlreadyReplied(postUri);
         if (alreadyReplied) {
-          console.log('   ⏭️  Already replied, skipping');
           return;
         }
 
@@ -228,30 +223,24 @@ class FirehoseBot {
     }
     
     if (!videoUrl) {
-      console.log('   ⏭️  No video URL found in embed');
       return;
     }
     
     // Check if it's a YouTube URL
     if (!this.isYouTubeUrl(videoUrl)) {
-      console.log(`   ⏭️  Not a YouTube URL: ${videoUrl}`);
       return;
     }
     
     const videoId = this.extractVideoId(videoUrl);
     if (!videoId) {
-      console.log('   ⏭️  Could not extract video ID');
       return;
     }
-    
-    console.log(`   🎬 YouTube video ID: ${videoId}`);
     
     // Rate limiting: wait between replies to avoid spam detection
     const now = Date.now();
     const timeSinceLastReply = now - this.lastReplyTime;
     if (timeSinceLastReply < this.minDelayBetweenReplies) {
       const waitTime = this.minDelayBetweenReplies - timeSinceLastReply;
-      console.log(`   ⏱️  Rate limiting: waiting ${Math.round(waitTime / 1000)}s before replying...`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     
@@ -285,27 +274,20 @@ class FirehoseBot {
 
   private async replyWithPrivacyLink(postUri: string, privacyUrl: string, videoId: string) {
     try {
-      console.log(`   💬 Creating reply with privacy link...`);
-      console.log(`   📍 Reply target: ${postUri}`);
-      
       // Get the post thread (contains both the post and its context)
       const thread = await this.agent.getPostThread({ uri: postUri });
       const post = 'post' in thread.data.thread ? (thread.data.thread as any).post : null;
       
       if (!post) {
-        console.error('   ❌ Could not get post data');
+        console.error('❌ Could not get post data for reply');
         return;
       }
       
       const postCid = post.cid;
-      console.log(`   🔑 Post CID: ${postCid}`);
       
       // Determine root - if the post we're replying to has a reply.root, use that, otherwise use the post itself
       const rootUri = post.record?.reply?.root?.uri || postUri;
       const rootCid = post.record?.reply?.root?.cid || postCid;
-      
-      console.log(`   🌳 Root URI: ${rootUri}`);
-      console.log(`   🌳 Root CID: ${rootCid}`);
       
       // Fetch video metadata
       const metadata = await this.fetchVideoMetadata(videoId);
@@ -323,7 +305,7 @@ class FirehoseBot {
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)); // 5 second max
         thumbnailBlob = await Promise.race([this.fetchThumbnail(videoId), timeoutPromise]);
       } catch (error) {
-        console.log('   ⚠️  Thumbnail fetch failed, continuing without it');
+        // Silently continue without thumbnail
       }
       
       // Always create embed with or without thumbnail
@@ -348,10 +330,10 @@ class FirehoseBot {
         embed
       });
       
-      console.log(`   ✅ Reply posted successfully!`);
+      console.log(`✅ Posted reply to ${postUri.split('/').pop()}`);
       
     } catch (error) {
-      console.error('   ❌ Error posting reply:', error);
+      console.error('Error posting reply:', error);
     }
   }
 
@@ -366,21 +348,18 @@ class FirehoseBot {
       const response = await fetch(`https://adblock.video/api/metadata?videoId=${videoId}`);
       if (response.ok) {
         const data = await response.json();
-        console.log(`   ✅ Got metadata from adblock.video`);
         return data;
       }
     } catch (error) {
-      console.log(`   ⚠️  adblock.video metadata API not available: ${error instanceof Error ? error.message : error}`);
+      // Silently fail over to YouTube
     }
     
     // Fallback to YouTube oEmbed API
     try {
       const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
-      console.log(`   🔄 Trying YouTube oEmbed API...`);
       const response = await fetch(oembedUrl);
       if (response.ok) {
         const data = await response.json();
-        console.log(`   ✅ Got metadata from YouTube oEmbed`);
         return {
           title: data.title,
           description: `By ${data.author_name}`,
@@ -388,7 +367,7 @@ class FirehoseBot {
         };
       }
     } catch (error) {
-      console.log(`   ⚠️  YouTube oEmbed also failed: ${error instanceof Error ? error.message : error}`);
+      // Silently continue
     }
     
     return null;
@@ -398,14 +377,13 @@ class FirehoseBot {
     // Try different YouTube thumbnail qualities in order of preference
     const thumbnailQualities = ['maxresdefault', 'sddefault', 'hqdefault', 'default'];
     
-    // Try each quality level
+    // Try each quality level silently
     for (const quality of thumbnailQualities) {
       const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
       
       // First try custom overlay API with this quality
       try {
         const overlayUrl = `https://adblock.video/api/og-video-image?thumbnail=${encodeURIComponent(thumbnailUrl)}`;
-        console.log(`   🖼️  Trying custom overlay (${quality}): ${overlayUrl}`);
         
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
@@ -418,48 +396,36 @@ class FirehoseBot {
         });
         clearTimeout(timeout);
         
-        console.log(`   📥 Custom overlay (${quality}) response: ${response.status}`);
-        
         if (response.ok) {
           const imageBuffer = await response.arrayBuffer();
-          console.log(`   📦 Custom overlay (${quality}) buffer: ${imageBuffer.byteLength} bytes`);
           
           const uploadResponse = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
             encoding: 'image/jpeg'
           });
           
-          console.log(`   ✅ Custom thumbnail (${quality}) with play icon uploaded successfully`);
           return uploadResponse.data.blob;
-        } else {
-          console.log(`   ⚠️  Custom overlay (${quality}) returned status ${response.status}`);
         }
       } catch (error) {
-        const errorMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-        console.log(`   ⚠️  Custom overlay (${quality}) failed: ${errorMsg}`);
+        // Continue to next quality
       }
       
       // Fallback to YouTube thumbnail directly for this quality
       try {
-        console.log(`   🔄 Trying YouTube thumbnail (${quality}): ${thumbnailUrl}`);
         const response = await fetch(thumbnailUrl);
         
         if (response.ok) {
           const imageBuffer = await response.arrayBuffer();
-          console.log(`   📦 YouTube thumbnail (${quality}) buffer: ${imageBuffer.byteLength} bytes`);
           
           const uploadResponse = await this.agent.uploadBlob(new Uint8Array(imageBuffer), {
             encoding: 'image/jpeg'
           });
           
-          console.log(`   ✅ YouTube thumbnail (${quality}) uploaded (no play icon overlay)`);
           return uploadResponse.data.blob;
         }
       } catch (error) {
-        console.log(`   ⚠️  YouTube thumbnail (${quality}) failed: ${error instanceof Error ? error.message : error}`);
+        // Continue to next quality
       }
     }
-    
-    console.log(`   ❌ All thumbnail attempts failed`);
     return null;
   }
 }
