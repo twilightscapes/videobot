@@ -2,6 +2,7 @@ import { Jetstream } from '@skyware/jetstream';
 import { BskyAgent, RichText } from '@atproto/api';
 import * as dotenv from 'dotenv';
 import express from 'express';
+import WebSocket from 'ws';
 
 // Load environment variables
 dotenv.config();
@@ -88,6 +89,7 @@ class FirehoseBot {
 
     // Connect to Firehose
     const jetstream = new Jetstream({
+      ws: WebSocket, // Node <22 has no global WebSocket; be explicit so the Docker image works
       wantedCollections: ['app.bsky.feed.post']
     });
 
@@ -465,4 +467,7 @@ async function main() {
   await bot.start();
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error('❌ Fatal error, exiting so the supervisor can restart us:', error);
+  process.exit(1);
+});
