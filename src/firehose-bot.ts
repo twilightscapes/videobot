@@ -3,17 +3,18 @@ import { BskyAgent, RichText } from '@atproto/api';
 import * as dotenv from 'dotenv';
 import express from 'express';
 import WebSocket from 'ws';
+import { pathToFileURL } from 'node:url';
 
 // Load environment variables
 dotenv.config();
 
-interface BotConfig {
+export interface BotConfig {
   handle: string;
   password: string;
   hashtag: string;
 }
 
-class FirehoseBot {
+export class FirehoseBot {
   private agent: BskyAgent;
   private config: BotConfig;
   private processedPosts = new Map<string, number>(); // Store with timestamp
@@ -23,6 +24,10 @@ class FirehoseBot {
   private readonly POST_RETENTION_MS = 3600000; // 1 hour retention
   private activeProcessingCount = 0;
   private maxConcurrentProcessing = 2; // Limit concurrent processing to reduce memory
+  private lastEventAt = Date.now(); // Liveness marker for the firehose watchdog
+  /** When true, run the full pipeline but log the reply instead of posting it. */
+  dryRun = false;
+  private readonly EVENT_TIMEOUT_MS = 5 * 60 * 1000; // No events this long = dead connection
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -59,13 +64,45 @@ class FirehoseBot {
     }, 5 * 60 * 1000); // Every 5 minutes
   }
 
-  async start() {
-    // Login
+  async login() {
     await this.agent.login({
       identifier: this.config.handle,
       password: this.config.password
     });
     console.log(`✅ Logged in as ${this.config.handle}`);
+  }
+
+  /**
+   * Re-run the normal processing pipeline on one post the firehose already
+   * delivered - e.g. one dropped by a since-fixed bug. Accepts a bsky.app URL
+   * or an at:// URI, and resolves to the canonical DID-based URI so the reply
+   * refs match what the live path would have produced.
+   */
+  async replay(input: string): Promise<void> {
+    const m = input.match(/bsky\.app\/profile\/([^/]+)\/post\/([^/?#]+)/);
+    const uri = m ? `at://${m[1]}/app.bsky.feed.post/${m[2]}` : input;
+    const thread = await this.agent.getPostThread({ uri, depth: 0 });
+    const node = thread.data.thread as any;
+    if (!node?.post?.uri || !node?.post?.record) {
+      throw new Error(`Could not load post: ${input}`);
+    }
+    const canonicalUri: string = node.post.uri;
+    const text = String(node.post.record.text || '').toLowerCase();
+    if (!text.includes('#adblock') && !text.includes('#videoprivacy')) {
+      console.warn(`⏭️ No #adblock/#videoprivacy hashtag, skipping: ${canonicalUri}`);
+      return;
+    }
+    console.log(`🔁 Replaying ${canonicalUri}`);
+    this.lastEventAt = Date.now();
+    await this.queuePostProcessing(canonicalUri, node.post.record);
+    // queuePostProcessing returns before the work finishes - wait for it
+    while (this.activeProcessingCount > 0) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
+  async start() {
+    await this.login();
 
     // Start Express server for Railway health checks
     const app = express();
@@ -102,13 +139,20 @@ class FirehoseBot {
     });
 
     jetstream.on('close', () => {
-      console.log('🔌 Firehose connection closed, reconnecting...');
-      setTimeout(() => jetstream.start(), 5000);
+      // Do NOT call jetstream.start() here. start() builds a partysocket
+      // WebSocket, which already reconnects by itself, and it overwrites
+      // this.ws without closing the old one - so every manual restart
+      // permanently leaked another self-reconnecting socket (1 -> 2 -> 4 ...)
+      // until the process wedged with live TCP connections but no events.
+      console.log('🔌 Firehose connection closed, waiting for auto-reconnect...');
     });
 
     // Listen for new posts
     jetstream.onCreate('app.bsky.feed.post', async (event) => {
       try {
+        // Any event at all proves the firehose is alive - record it before filtering
+        this.lastEventAt = Date.now();
+
         const post = event.commit.record as any;
         
         // Skip if no text
@@ -144,6 +188,19 @@ class FirehoseBot {
 
     jetstream.start();
     console.log('🚀 Firehose bot started, monitoring for posts...');
+
+    // Watchdog. The firehose is high volume, so a long gap with no events at all
+    // means the connection is dead even though the socket still looks open.
+    // Exit non-zero and let Docker's restart policy give us a clean process.
+    setInterval(() => {
+      const silentMs = Date.now() - this.lastEventAt;
+      if (silentMs > this.EVENT_TIMEOUT_MS) {
+        console.error(
+          `\u26a0\ufe0f No firehose events for ${Math.round(silentMs / 1000)}s - connection is stale, exiting to force a restart`
+        );
+        process.exit(1);
+      }
+    }, 60 * 1000);
     
     // Handle shutdown signals
     process.on('SIGTERM', () => {
@@ -253,6 +310,7 @@ class FirehoseBot {
     
     const videoId = this.extractVideoId(videoUrl);
     if (!videoId) {
+      console.warn(`⏭️ YouTube link with no recognizable video ID, skipping: ${videoUrl}`);
       return;
     }
     
@@ -282,7 +340,9 @@ class FirehoseBot {
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
       /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/
+      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/
     ];
     
     for (const pattern of patterns) {
@@ -339,6 +399,11 @@ class FirehoseBot {
         }
       };
       
+      if (this.dryRun) {
+        console.log(`🧪 DRY RUN - would reply to ${postUri.split('/').pop()} ${thumbnailBlob ? 'with' : 'WITHOUT'} thumbnail:\n${rt.text}`);
+        return;
+      }
+
       // Create reply
       await this.agent.post({
         text: rt.text,
@@ -450,8 +515,7 @@ class FirehoseBot {
   }
 }
 
-// Run the bot
-async function main() {
+export function loadConfig(): BotConfig {
   const config: BotConfig = {
     handle: process.env.BLUESKY_HANDLE || '',
     password: process.env.BLUESKY_PASSWORD || '',
@@ -462,12 +526,21 @@ async function main() {
     console.error('❌ Missing BLUESKY_HANDLE or BLUESKY_PASSWORD environment variables');
     process.exit(1);
   }
+  return config;
+}
 
-  const bot = new FirehoseBot(config);
+// Run the bot
+async function main() {
+  const bot = new FirehoseBot(loadConfig());
   await bot.start();
 }
 
-main().catch((error) => {
-  console.error('❌ Fatal error, exiting so the supervisor can restart us:', error);
-  process.exit(1);
-});
+// Only start the firehose when this file is the entrypoint (node dist/firehose-bot.js),
+// so replay.ts can import FirehoseBot without launching a second bot.
+const isEntrypoint = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isEntrypoint) {
+  main().catch((error) => {
+    console.error('❌ Fatal error, exiting so the supervisor can restart us:', error);
+    process.exit(1);
+  });
+}
